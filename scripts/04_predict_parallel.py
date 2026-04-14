@@ -36,15 +36,7 @@ apply_mask = prm.APPLY_MASK
 apply_aux_masks = prm.APPLY_AUX_MASKS
 tiles_to_process = prm.TILES_TO_PROCESS
 ignore_haze = prm.IGNORE_HAZE
-
-# Quality sub-masks used when IGNORE_HAZE = True
-QUAL_SUBMASKS = [
-    'QL_QUALITY_CIRRUS.TIF',
-    'QL_QUALITY_CLOUD.TIF',
-    'QL_QUALITY_CLOUDSHADOW.TIF',
-    'QL_QUALITY_SNOW.TIF'
-]
-
+QUAL_SUBMASKS = prm.QUAL_SUBMASKS
 
 ################################################################################
 #                           Function Definitions                               #

@@ -1,10 +1,9 @@
 # ANN_unmixing
 
-## setup
+## Setup
 # Spectral Library Workflow for ENMAP Data Analysis
 
 This repository implements a modular workflow for processing ENMAP hyperspectral data using neural network unmixing techniques. The workflow processes spectral libraries to generate cover fraction maps from hyperspectral imagery.
-
 
 ### Core Python Libraries:
 - Python 3.x
@@ -19,6 +18,44 @@ This repository implements a modular workflow for processing ENMAP hyperspectral
 - scikit-learn (for machine learning utilities)
 - Concurrent futures (Python standard library for parallel processing)
 - Multiprocessing (Python standard library for parallel processing)
+
+## Repository Structure
+
+```
+.
+├── .git/
+├── .gitignore
+├── 99_predict.py
+├── 99_train.py
+├── auxiliary/
+│   ├── all_wavelengths.csv
+│   └── bad_wavelengths.csv
+├── data/
+│   ├── auxiliary/
+│   │   └── roi.gpkg
+│   └── data_cube/
+├── LICENSE
+├── prm/
+│   └── prm_demo.py
+├── scripts/
+│   ├── 00_library_plots.ipynb
+│   ├── 00_sample_endmember_spectra.py
+│   ├── 01_endmember_filter_and_format.py
+│   ├── 02_synthmix.py
+│   ├── 03_model_train.py
+│   ├── 03_model_train_old.py
+│   ├── 04_predict_parallel.py
+│   ├── 05_mosaic_frac.py
+│   ├── 05_mosaic_frac_time_series.py
+│   ├── 05_predict_stats.py
+│   └── 05_visualization/
+│       ├── time_series_graph/
+│       │   ├── 99_sampling_values_library_multiprocessing.py
+│       │   └── 99_plot_time_series_line.py
+│       └── time_series_animation/
+│           └── 02_enmapcube_visualization_and_animation_fcover_image_cc.py
+└── README.md
+
 
 
 # Workflow Overview ##################################################################################################################################

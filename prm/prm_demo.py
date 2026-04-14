@@ -1,3 +1,4 @@
+import math
 import os
 import pandas as pd
 
@@ -73,44 +74,10 @@ def filter_endmembers(df: pd.DataFrame, BAND_MAP: dict, numeric_cols: list) -> p
     NDVI = (df[BAND_MAP['800']] - df[BAND_MAP['670']]) / (df[BAND_MAP['800']] + df[BAND_MAP['670']])
     CAI  = 0.5 * (df[BAND_MAP['2000']] + df[BAND_MAP['2200']]) - df[BAND_MAP['2100']]
 
-    # Class-based filters
+    # Demo Class-based filters to remove outliers 
     df = df[~((df['class'] == 'GV') & (NDVI < 0.8))]
     df = df[~((df['class'] == 'NPV') & (CAI > 0.25))]
-
-    #Location filter
-    #df = df[df['location'] == 'California']
-
-    # Category exclusion
-    df = df[~df['category_1'].isin(['paving', "roof", 'roofing', "coating"])]
-
-
-    # Keep only specific source libraries
-    df = df[df['source'].isin([
-        'frames spectral library',
-        'Lake Fire Endmembers',
-       # 'eaton fire spectral library'
-       ])]
-            
-    df = df[~df['id_lib'].isin([
-        'fram_00032',
-        'fram_00156',
-        'fram_00246',
-        'fram_00252',
-        'fram_00084',
-        'fram_00087',
-        'fram_00189'
-       ])]
-        
-    numeric_df = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
-    row_mean = numeric_df.mean(axis=1, skipna=True)
-    df = df[~((df['class'] == 'CHAR') & (row_mean < 0.1))]
-        
-        
-      # Remove SUB rows with low mean reflectance
-    numeric_df = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
-    row_mean = numeric_df.mean(axis=1, skipna=True)
-    df = df[~((df['class'] == 'SUB') & (row_mean < 0.15))]
-
+   
     after_count = len(df)
     print(f"Filtered {before_count - after_count} records. Remaining: {after_count}")
 
@@ -147,7 +114,7 @@ INCL_PURE_LIBRARY = False
 # https://doi.org/10.1016/j.rse.2025.114740
 # -----------------------
 MODEL_INPUT_SHAPE = (204,)
-MODEL_DENSE_UNITS = 1024
+MODEL_DENSE_UNITS = 256
 MODEL_N_LAYERS = 5
 MODEL_NUM_CLASSES = len(CLASSES)
 
@@ -171,7 +138,7 @@ FILE_NAME_MODEL = 'nn_model'
 # ----------------------
 # 04_predict_parallel (parameters for prediction workflows)
 # ----------------------
-N_WORKERS = 26
+N_WORKERS = math.ceil(os.cpu_count() * 0.7)
 PARALLELISM_THREADS = 1  # threads per process (workers * threads = total cores)
 
 CUBE_SPEC = r"/data/Dagobah/enmap/dc_cali/enmap/03_EnMAP_cube/cube_v2_red"
@@ -187,7 +154,15 @@ CLASS_NAMES = CLASSES
 APPLY_CLIP = True
 APPLY_MASK = True
 APPLY_AUX_MASKS = True
-IGNORE_HAZE = True
+
+IGNORE_HAZE = False
+# Quality sub-masks used when IGNORE_HAZE = True
+QUAL_SUBMASKS = [
+    'QL_QUALITY_CIRRUS.TIF',
+    'QL_QUALITY_CLOUD.TIF',
+    'QL_QUALITY_CLOUDSHADOW.TIF',
+    'QL_QUALITY_SNOW.TIF'
+]
 
 
 # Tiles to process (single authoritative list)
@@ -204,68 +179,6 @@ TILES_TO_PROCESS = ["X0012_Y0028",
 # default product directory and file products
 PRODUCTS = ['VEGCOV_FRAC.TIF']
 
-# ----------------------
-# 06_NDFI
-# ----------------------
-# default product directory and file products
-NDFI_DIR = os.path.join(OUTPUT_ROOT, '06_NDFI')
-
-
-
-
-# ----------------------
-# 05_visualization/time_series_graph
-# ----------------------
-# sampling script parameters
-SAMPLING_CUBE_DIR = PREDICTIONS_DIR
-SAMPLING_SHAPEFILE_PATH = os.path.join(SCRIPTS_DIR, '05_visualization/time_series_graph/', 'all_merged_combined.gpkg')
-# Write sampling CSV into the central visualization output (not inside scripts/)
-SAMPLING_OUTPUT_CSV = os.path.join(VISUALIZATION_DIR, 'time_series_graph', 'all_merged_combined_values.csv')
-N_PROC = 30
-
-# time series plotting defaults
-TIME_SERIES_INPUT_FILE = SAMPLING_OUTPUT_CSV
-TIME_SERIES_START_DATE = '20230501'
-TIME_SERIES_END_DATE = '20251113'
-# Put time series plots under the project VISUALIZATION directory
-TIME_SERIES_PLOT_OUTPUT_FOLDER = os.path.join(VISUALIZATION_DIR, 'time_series_graph', 'plots_by_name')
-
-# Ensure time series / sampling dirs exist when params are imported
-os.makedirs(os.path.dirname(SAMPLING_OUTPUT_CSV), exist_ok=True)
-os.makedirs(TIME_SERIES_PLOT_OUTPUT_FOLDER, exist_ok=True)
-
-# ----------------------
-# 05_visualization/time_series_animation
-# ----------------------
-PREDICTIONS_MOSAIC_DIR = os.path.join(PREDICTIONS_DIR, 'mosaic')
-ANIM_OUTPUT_FOLDER = os.path.join(VISUALIZATION_DIR, 'time_series_animation', 'cc')
-RGB_ANIMATION_FILE = os.path.join(ANIM_OUTPUT_FOLDER, 'rgb_animation.gif')
-TIMELINE_ANIMATION_FILE = os.path.join(ANIM_OUTPUT_FOLDER, 'timeline_animation.gif')
-SITE_NAME = 'cc'
-PROCESSING_LOGFILE = FN_LOG_FILE
-
-# Ensure mosaic and animation output directories exist on import
-os.makedirs(PREDICTIONS_MOSAIC_DIR, exist_ok=True)
-os.makedirs(ANIM_OUTPUT_FOLDER, exist_ok=True)
-
-START_DATE = TIME_SERIES_START_DATE
-END_DATE = TIME_SERIES_END_DATE
-
-RGB_BANDS = [2, 1, 3]
-MIN_MAX_RGB = [[0, 100], [0, 100], [0, 100]]
-BACKGROUND_RGB = [0, 0, 0]
-
-BBOX = [-18482.6819511862122454, -411903.2162085194140673, 41517.3180488137877546, -291903.2162085194140673]
-BBOX_ROI = [-10957,-356518, 9509,-280903]
-
-
-PNG_DPI = 600
-RESIZE_FACTOR = 0.5
-ANNOTATION_FONT_SIZE = 60
-ANNOTATION_TEXT_COLOR = [0, 0, 0]
-ANNOTATION_TEXT_POSITION = [10, 10]
-TIMELINE_FONT_SIZE = 20
-ANIMATION_FPS = 2
 
 # End of params-only configuration file
 
