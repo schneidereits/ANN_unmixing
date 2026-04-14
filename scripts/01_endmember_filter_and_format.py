@@ -1,0 +1,419 @@
+import os
+from prm import *
+from prm import REFLECTANCE_FILE, BAD_WAVELENGTHS_CSV, ENDMEMBER_DIR, CLASS_COL, filter_endmembers, CLASSES
+import pandas as pd
+import inspect
+import re
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+import seaborn as sns
+
+apply_filters = True  # Whether to apply custom filters before exporting endmembers
+#apply_filters = False  # Whether to apply custom filters before exporting endmembers
+
+# Band mapping function
+# ------------------------------------------------------------
+def calc_ndvi_cai(df: pd.DataFrame, required_bands=[670, 800, 2000, 2100, 2200]):
+    """
+    Map required bands to closest available numeric columns.
+    Returns BAND_MAP dict and list of numeric columns.
+    """
+    numeric_cols = [c for c in df.columns if str(c).replace('.', '', 1).isdigit()]
+    numeric_cols_float = [float(c) for c in numeric_cols]
+
+    if not numeric_cols:
+        raise ValueError("No numeric wavelength columns found in dataframe.")
+
+    def find_closest_band(target, available_bands):
+        return str(min(available_bands, key=lambda x: abs(x - target)))
+
+    BAND_MAP = {str(b): find_closest_band(b, numeric_cols_float) for b in required_bands}
+
+    print("Using closest available bands:")
+    for k, v in BAND_MAP.items():
+        print(f"  Target {k} nm → Closest {v} nm")
+
+    return BAND_MAP, numeric_cols
+
+# ------------------------------------------------------------
+# Endmember export function
+# ------------------------------------------------------------
+def save_endmembers(reflectance_resampled: pd.DataFrame, out_dir: str, wavelength_cols: list,
+                    class_col: str = "class", bad_wavelengths_csv: str = None):
+    """Save class-wise endmembers as CSV files, excluding bad wavelengths."""
+    os.makedirs(out_dir, exist_ok=True)
+
+    # Load bad wavelengths
+    bad_wavelengths = []
+    if bad_wavelengths_csv and os.path.exists(bad_wavelengths_csv):
+        bad_wavelengths = pd.read_csv(bad_wavelengths_csv, header=None).iloc[:, 0].round(2).tolist()
+
+    # Filter good wavelengths
+    wl_cols_float = [round(float(w), 2) for w in wavelength_cols]
+    good_wavelengths = [wl for wl in wl_cols_float if wl not in bad_wavelengths]
+    good_wavelength_str = [f"{wl:.2f}" for wl in good_wavelengths]
+    
+    # Verify good wavelengths and print
+    if len(good_wavelengths) == len(wl_cols_float) - len(bad_wavelengths):
+        print(f"wavelengths subset sucessfully: {len(good_wavelengths)} out of {len(wl_cols_float)} remaining")
+    else:
+        print("Bad wavelengths removal issue")
+
+    # Check missing columns
+    missing = [w for w in good_wavelength_str if w not in reflectance_resampled.columns]
+    if missing:
+        raise KeyError(f"Missing wavelength columns: {missing}")
+
+    # Save each class
+    for cls in reflectance_resampled[class_col].unique():
+        subset = reflectance_resampled[reflectance_resampled[class_col] == cls]
+        subset_out = subset[good_wavelength_str].copy() * 10000  # scale reflectance
+
+        # Sanitize filename
+        safe_cls = re.sub(r'[\\/:"*?<>|]+', "_", str(cls))
+        out_path = os.path.join(out_dir, f"{safe_cls}.csv")
+        subset_out.to_csv(out_path, index=False, header=False)
+
+        # Report count
+        num_rows = len(subset_out)
+        print(f"for class '{cls}' ({num_rows} spectra)  Saved endmember: {out_path}")
+
+
+def plot_spectra_by_class(df: pd.DataFrame, wavelength_cols: list, class_col: str, out_dir: str):
+    """
+    Plot all spectra row-wise for each class, save individual class plots, 
+    show them in console, and create a combined plot of all classes.
+    
+    Parameters:
+    - df: DataFrame containing spectra and class labels.
+    - wavelength_cols: list of columns representing wavelength bands.
+    - class_col: column name for class labels.
+    - out_dir: directory to save plots.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+
+    # Convert wavelength columns to numeric safely
+    try:
+        wavelengths = np.array([float(w) for w in wavelength_cols])
+    except ValueError:
+        raise ValueError("Wavelength columns contain non-numeric values.")
+
+    # Define specific colors for known classes
+    specific_colors = {
+        "GV": "green",
+        "NPV": "red",
+        "SUB": "blue",
+        "CHAR": "black"
+    }
+
+    # Build class_colors dynamically from CLASSES, using specific colors where available
+    class_colors = specific_colors.copy()
+    missing_classes = [c for c in CLASSES if c not in class_colors]
+    if missing_classes:
+        # Assign colors from a default palette for additional classes
+        default_palette = sns.color_palette("tab10", n_colors=len(missing_classes))
+        for c, color in zip(missing_classes, default_palette):
+            class_colors[c] = color
+
+    # Build palette map: if any classes are missing from `class_colors`, assign
+    # them colors from a default seaborn palette so all classes get a color.
+    classes = df[class_col].unique()
+    palette_map = class_colors.copy()
+    missing_classes = [c for c in classes if c not in palette_map]
+    if missing_classes:
+        default_palette = sns.color_palette("tab10", n_colors=max(len(missing_classes), 1))
+        for i, c in enumerate(missing_classes):
+            palette_map[c] = default_palette[i % len(default_palette)]
+
+    # -----------------------------
+    # Plot each class individually
+    # -----------------------------
+    for cls in classes:
+        subset = df[df[class_col] == cls]
+        plt.figure(figsize=(10, 6))
+
+        color = palette_map.get(cls, "gray")  # default gray if still missing
+
+        # Plot each row (spectrum)
+        for _, row in subset.iterrows():
+            plt.plot(wavelengths, row[wavelength_cols].to_numpy(), color=color, alpha=0.5)
+
+        # Plot bold mean spectrum
+        mean_spec = subset[wavelength_cols].mean(axis=0)
+        plt.plot(wavelengths, mean_spec.to_numpy(), color=color, linewidth=2.2, label=f"{cls} mean")
+
+        plt.title(f"Spectra for Class: {cls}")
+        plt.xlabel("Wavelength (nm)")
+        plt.ylabel("Reflectance")
+        plt.grid(True)
+        plt.legend()
+
+        # Sanitize filename
+        safe_cls = re.sub(r'[\\/:"*?<>|]+', "_", str(cls))
+        plot_path = os.path.join(out_dir, f"{safe_cls}_spectra_plot.png")
+        plt.savefig(plot_path, dpi=300)
+
+        plt.show()  # display in console
+
+        plt.close()
+        print(f"Saved plot for class '{cls}' at: {plot_path}")
+
+    # -----------------------------
+    # Combined plot of all classes
+    # -----------------------------
+    n_classes = len(CLASSES)
+    n_cols = 2  # number of columns in the facet layout
+    n_rows = math.ceil(n_classes / n_cols)
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 5 * n_rows), sharex=True, sharey=True)
+    axes = axes.flatten()
+    for i, cls in enumerate(CLASSES):
+        ax = axes[i]
+        subset = df[df[class_col] == cls]
+        color = palette_map.get(cls, "gray")
+
+        # Plot individual spectra
+        for _, row in subset.iterrows():
+            ax.plot(wavelengths, row[wavelength_cols].to_numpy(), color=color, alpha=0.2)
+
+        # Plot mean spectrum
+        mean_spec = subset[wavelength_cols].mean(axis=0)
+        ax.plot(wavelengths, mean_spec.to_numpy(), color="black", linewidth=3, label=f"{cls} mean")
+
+        ax.set_title(cls, fontsize=18)
+        ax.grid(True)
+        if i % n_cols == 0:
+            ax.set_ylabel("Reflectance", fontsize=16)
+        if i >= (n_rows - 1) * n_cols:
+            ax.set_xlabel("Wavelength (nm)", fontsize=16)
+        ax.legend(fontsize=10)
+
+    # Hide any unused subplots
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.suptitle("Spectra by Class", fontsize=18, y=0.92)
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+
+    facet_path = os.path.join(out_dir, "facet_spectra_plot.png")
+    plt.savefig(facet_path, dpi=300)
+    plt.show()
+    plt.close()
+
+    print(f"Saved faceted plot at: {facet_path}")
+
+    ####################################
+    # Plotly HTML faceted plot with tooltips and thumbnails
+    ####################################
+    try:
+        import plotly.graph_objs as go
+        import plotly.subplots as psub
+        import plotly.io as pio
+    except ImportError:
+        print("Plotly is not installed. Skipping interactive HTML plot.")
+        return
+
+    # Prepare Plotly subplots
+    n_classes = len(CLASSES)
+    n_cols = 2
+    n_rows = math.ceil(n_classes / n_cols)
+    fig = psub.make_subplots(rows=n_rows, cols=n_cols, subplot_titles=CLASSES, shared_xaxes=True, shared_yaxes=True)
+
+    for idx, cls in enumerate(CLASSES):
+        row = idx // n_cols + 1
+        col = idx % n_cols + 1
+        subset = df[df[class_col] == cls]
+        color = palette_map.get(cls, "gray")
+
+        # Plot individual spectra with tooltips
+        for _, row_data in subset.iterrows():
+            id_lib = row_data.get('id_lib', 'N/A')
+            # Thumbnail: create a small PNG in memory (optional, fallback to id_lib if not possible)
+            hovertext = f"id_lib: {id_lib}"  # Could add more info here
+            fig.add_trace(
+                go.Scatter(
+                    x=wavelengths,
+                    y=row_data[wavelength_cols].to_numpy(),
+                    mode='lines',
+                    line=dict(color=color, width=1),
+                    opacity=0.2,
+                    name=str(id_lib),
+                    showlegend=False,
+                    hoverinfo='text',
+                    hovertext=hovertext
+                ),
+                row=row, col=col
+            )
+
+        # Plot mean spectrum
+        mean_spec = subset[wavelength_cols].mean(axis=0)
+        fig.add_trace(
+            go.Scatter(
+                x=wavelengths,
+                y=mean_spec.to_numpy(),
+                mode='lines',
+                line=dict(color='black', width=3),
+                name=f"{cls} mean",
+                showlegend=False,
+                hoverinfo='skip',
+            ),
+            row=row, col=col
+        )
+
+    fig.update_layout(
+        height=350 * n_rows,
+        width=900,
+        title_text="Spectra by Class (Interactive)",
+        title_x=0.5,
+        margin=dict(t=80, b=40),
+    )
+    fig.update_xaxes(title_text="Wavelength (nm)")
+    fig.update_yaxes(title_text="Reflectance")
+
+    html_path = os.path.join(out_dir, "facet_spectra_plotly.html")
+    pio.write_html(fig, file=html_path, auto_open=False, include_plotlyjs='cdn')
+    print(f"Saved interactive Plotly faceted plot at: {html_path}")
+    
+    ####################################
+    # NDVI vs CAI plot
+    #######################################
+    
+    df = df[df[CLASS_COL].isin(CLASSES)].copy()
+    # palette_map is reused here to ensure all classes have colors
+
+    # Compute NDVI and CAI using BAND_MAP
+    # Find closest numeric columns to required wavelengths
+    numeric_cols = [c for c in df.columns if str(c).replace(".", "", 1).isdigit()]
+    numeric_cols_float = [float(c) for c in numeric_cols]
+
+    def find_closest_band(target):
+        return str(min(numeric_cols_float, key=lambda x: abs(x - target)))
+
+    red_band = find_closest_band(670)
+    nir_band = find_closest_band(800)
+    cai1 = find_closest_band(2000)
+    cai2 = find_closest_band(2200)
+    cai3 = find_closest_band(2100)
+
+    # Compute NDVI and CAI
+    df['NDVI'] = (df[nir_band] - df[red_band]) / (df[nir_band] + df[red_band])
+    df['CAI'] = 0.5 * (df[cai1] + df[cai2]) - df[cai3]
+
+    # --- Feature plot by class ---
+    plt.figure(figsize=(12, 8))
+    sns.scatterplot(data=df, x='NDVI', y='CAI',   hue=CLASS_COL, palette=palette_map, alpha=0.7, s=50)
+    plt.title("Feature Space: NDVI vs CAI by Class", fontsize=22)
+    plt.xlabel("NDVI", fontsize=14)
+    plt.ylabel("CAI", fontsize=14)
+    plt.legend(loc='lower center', bbox_to_anchor=(0.5, -0.3), ncol=3, frameon=False, fontsize=16)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.tight_layout()
+
+    feature_class_path = os.path.join(ENDMEMBER_DIR, "feature_space_NDVI_CAI_class.png")
+    plt.savefig(feature_class_path, dpi=300, bbox_inches='tight')
+    plt.show()
+    plt.close()
+
+    print(f"Saved NDVI vs CAI (by class) plot at: {feature_class_path}")
+
+
+
+
+# ------------------------------------------------
+# Main Execution
+# ------------------------------------------------------------
+def main():
+    print("Loading resampled reflectance data...")
+    df = pd.read_csv(REFLECTANCE_FILE)
+
+    # Identify wavelength columns
+    wavelength_cols = [c for c in df.columns if str(c).replace(".", "").isdigit()]
+    print(f"Found {len(wavelength_cols)} wavelength bands.")
+
+    # Map bands
+    BAND_MAP, numeric_cols = calc_ndvi_cai(df)
+
+    # Apply filters if requested
+    if apply_filters:
+        print("Applying custom filters...")
+        df = filter_endmembers(df, BAND_MAP, numeric_cols)
+
+        # Save filter function for reproducibility
+        os.makedirs(ENDMEMBER_DIR, exist_ok=True)
+        filter_code_path = os.path.join(ENDMEMBER_DIR, "applied_filters_function.txt")
+        filter_code = inspect.getsource(filter_endmembers)
+        with open(filter_code_path, 'w') as f:
+            f.write(filter_code)
+
+    # Export endmembers
+    print("Exporting endmembers by class...")
+    save_endmembers(
+        reflectance_resampled=df,
+        out_dir=ENDMEMBER_DIR,
+        wavelength_cols=wavelength_cols,
+        class_col=CLASS_COL,
+        bad_wavelengths_csv=BAD_WAVELENGTHS_CSV,
+    )
+    
+     # -----------------------------
+    # Create and print table: counts per class per source
+    # -----------------------------
+
+# -----------------------------
+# Create and print table: counts per class per source
+# -----------------------------
+    if 'source' in df.columns:
+        # Group and count
+        summary_table = df.groupby('source')[CLASS_COL].value_counts().unstack(fill_value=0)
+
+        # Add total column per source
+        summary_table['Total'] = summary_table.sum(axis=1)
+
+        # Sort rows by total descending
+        summary_table = summary_table.sort_values(by='Total', ascending=False)
+
+        print("\n=== Counts per class per source ===\n")
+        # Use pandas built-in display
+        print(summary_table)
+
+        # Save CSV as well
+        table_path = os.path.join(ENDMEMBER_DIR, "counts_per_class_per_source.csv")
+        summary_table.to_csv(table_path)
+        print(f"\nSaved summary table at: {table_path}")
+        
+    # -----------------------------
+# Create and print table: counts per class per category_1
+# -----------------------------
+    if 'category_1' in df.columns:
+        # Group and count
+        summary_table = df.groupby('category_1')[CLASS_COL].value_counts().unstack(fill_value=0)
+
+        # Add total column per category
+        summary_table['Total'] = summary_table.sum(axis=1)
+
+        # Sort rows by total descending
+        summary_table = summary_table.sort_values(by='Total', ascending=False)
+
+        print("\n=== Counts per class per source ===\n")
+        # Use pandas built-in display
+        print(summary_table)
+
+        # Save CSV as well
+        table_path = os.path.join(ENDMEMBER_DIR, "counts_per_class_per_category_1.csv")
+        summary_table.to_csv(table_path)
+        print(f"\nSaved summary table at: {table_path}")
+
+    plot_spectra_by_class(df,
+                          wavelength_cols,
+                          CLASS_COL,
+                          ENDMEMBER_DIR)
+
+    print("Processing complete.")
+
+# ------------------------------------------------------------
+# Entry Point
+# ------------------------------------------------------------
+if __name__ == "__main__":
+    main()
