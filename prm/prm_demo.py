@@ -33,10 +33,13 @@ os.makedirs(OUTPUT_ROOT, exist_ok=True)
 # -----------------------
 # input data and directory paths 
 # -----------------------
-
+STM = True
 # Input data files 
-REFLECTANCE_FILE = r"E:\Project_EnFireMap\01_data\03_spectral_libraries\temp_shawn\resampling\spectral_library_resampled_enmap_interpolated.csv"
+SPECTRAL_LIB = r"D:\ANN_unmixing\data\endmembers\Plant_life_forms_STMS.csv"
+
 BAD_WAVELENGTHS_CSV = r"E:\Project_EnFireMap\01_data\03_spectral_libraries\temp_shawn\resampling\wavelength\bad_wavelengths.csv"
+if STM:
+    BAD_WAVELENGTHS_CSV = None
 
 # -----------------------
 # Out dir creation
@@ -61,6 +64,7 @@ os.makedirs(VISUALIZATION_DIR, exist_ok=True)
 # -----------------------
 # 01 endmember filtering
 # -----------------------
+FILTER_ENDMEMBERS = True  # Set to False to skip filtering and use the full library
 # Define a function to apply the filtering logic to the endmember DataFrame
 
 def filter_endmembers(df: pd.DataFrame, BAND_MAP: dict, numeric_cols: list) -> pd.DataFrame:

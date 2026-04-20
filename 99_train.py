@@ -12,8 +12,8 @@ import importlib.util
 ###############################################################
 # PRM
 ###############################################################
-PRM_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prm")
-PRM_MODULE = PRM_DIR + "prm_fire_libs_CHAR_filtered"  # Default prm module name (can be overridden by env var or command-line arg)
+PRM_DIR = "prm"
+PRM_MODULE = "prm_demo"  # Default prm module name (can be overridden by env var or command-line arg)
 # Set desired prm module name here (change to e.g. 'prm_CHAR', 'prm_reduced', or 'prm').
 # This top-level value will be used unless overridden by the environment variable
 # PRM_MODULE or the command-line flag --prm.
@@ -26,8 +26,8 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 def load_prm(prm_name: str):
     """Dynamically load a prm module by name and expose it as 'prm'."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    prm_file = os.path.join(script_dir, f"{prm_name}.py")
-    
+    prm_file = os.path.join(script_dir, PRM_DIR, f"{prm_name}.py")
+
     if not os.path.exists(prm_file):
         raise FileNotFoundError(f"Could not find prm file: {prm_file}")
 

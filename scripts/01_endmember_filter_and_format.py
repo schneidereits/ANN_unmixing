@@ -1,6 +1,6 @@
 import os
 from prm import *
-from prm import REFLECTANCE_FILE, BAD_WAVELENGTHS_CSV, ENDMEMBER_DIR, CLASS_COL, filter_endmembers, CLASSES
+from prm import SPECTRAL_LIB, BAD_WAVELENGTHS_CSV, ENDMEMBER_DIR, CLASS_COL, FILTER_ENDMEMBERS, CLASSES
 import pandas as pd
 import inspect
 import re
@@ -8,9 +8,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import seaborn as sns
-
-apply_filters = True  # Whether to apply custom filters before exporting endmembers
-#apply_filters = False  # Whether to apply custom filters before exporting endmembers
 
 # Band mapping function
 # ------------------------------------------------------------
@@ -203,77 +200,6 @@ def plot_spectra_by_class(df: pd.DataFrame, wavelength_cols: list, class_col: st
 
     print(f"Saved faceted plot at: {facet_path}")
 
-    ####################################
-    # Plotly HTML faceted plot with tooltips and thumbnails
-    ####################################
-    try:
-        import plotly.graph_objs as go
-        import plotly.subplots as psub
-        import plotly.io as pio
-    except ImportError:
-        print("Plotly is not installed. Skipping interactive HTML plot.")
-        return
-
-    # Prepare Plotly subplots
-    n_classes = len(CLASSES)
-    n_cols = 2
-    n_rows = math.ceil(n_classes / n_cols)
-    fig = psub.make_subplots(rows=n_rows, cols=n_cols, subplot_titles=CLASSES, shared_xaxes=True, shared_yaxes=True)
-
-    for idx, cls in enumerate(CLASSES):
-        row = idx // n_cols + 1
-        col = idx % n_cols + 1
-        subset = df[df[class_col] == cls]
-        color = palette_map.get(cls, "gray")
-
-        # Plot individual spectra with tooltips
-        for _, row_data in subset.iterrows():
-            id_lib = row_data.get('id_lib', 'N/A')
-            # Thumbnail: create a small PNG in memory (optional, fallback to id_lib if not possible)
-            hovertext = f"id_lib: {id_lib}"  # Could add more info here
-            fig.add_trace(
-                go.Scatter(
-                    x=wavelengths,
-                    y=row_data[wavelength_cols].to_numpy(),
-                    mode='lines',
-                    line=dict(color=color, width=1),
-                    opacity=0.2,
-                    name=str(id_lib),
-                    showlegend=False,
-                    hoverinfo='text',
-                    hovertext=hovertext
-                ),
-                row=row, col=col
-            )
-
-        # Plot mean spectrum
-        mean_spec = subset[wavelength_cols].mean(axis=0)
-        fig.add_trace(
-            go.Scatter(
-                x=wavelengths,
-                y=mean_spec.to_numpy(),
-                mode='lines',
-                line=dict(color='black', width=3),
-                name=f"{cls} mean",
-                showlegend=False,
-                hoverinfo='skip',
-            ),
-            row=row, col=col
-        )
-
-    fig.update_layout(
-        height=350 * n_rows,
-        width=900,
-        title_text="Spectra by Class (Interactive)",
-        title_x=0.5,
-        margin=dict(t=80, b=40),
-    )
-    fig.update_xaxes(title_text="Wavelength (nm)")
-    fig.update_yaxes(title_text="Reflectance")
-
-    html_path = os.path.join(out_dir, "facet_spectra_plotly.html")
-    pio.write_html(fig, file=html_path, auto_open=False, include_plotlyjs='cdn')
-    print(f"Saved interactive Plotly faceted plot at: {html_path}")
     
     ####################################
     # NDVI vs CAI plot
@@ -326,7 +252,7 @@ def plot_spectra_by_class(df: pd.DataFrame, wavelength_cols: list, class_col: st
 # ------------------------------------------------------------
 def main():
     print("Loading resampled reflectance data...")
-    df = pd.read_csv(REFLECTANCE_FILE)
+    df = pd.read_csv(SPECTRAL_LIB)
 
     # Identify wavelength columns
     wavelength_cols = [c for c in df.columns if str(c).replace(".", "").isdigit()]
@@ -336,7 +262,7 @@ def main():
     BAND_MAP, numeric_cols = calc_ndvi_cai(df)
 
     # Apply filters if requested
-    if apply_filters:
+    if FILTER_ENDMEMBERS:
         print("Applying custom filters...")
         df = filter_endmembers(df, BAND_MAP, numeric_cols)
 
