@@ -13,9 +13,9 @@ import subprocess
 ###############################################################
 # PRM
 ###############################################################
-PRM_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prm")
-PRM_MODULE = PRM_DIR + "prm_fire_libs_CHAR_filtered"  # Default prm module name (can be overridden by env var or command-line arg)
-# Set desired prm module name here (change to e.g. 'prm_CHAR', 'prm_reduced', or 'prm').
+PRM_DIR = "prm"
+PRM_MODULE = "prm_demo_veg_condition_time_series"  # Default prm module name (can be overridden by env var or command-line arg)
+# Set desired prm module name here (change to e.g. 'prm_CHAR', 'prm_demo_PLF_STM', etc).
 # This top-level value will be used unless overridden by the environment variable
 # PRM_MODULE or the command-line flag --prm.
 
@@ -26,22 +26,36 @@ PRM_MODULE = PRM_DIR + "prm_fire_libs_CHAR_filtered"  # Default prm module name 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
-def load_prm(prm_name: str):
+def load_prm(prm_name: str, output_base_location: str = None):
     """Dynamically load a prm module by name and expose it as 'prm'."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    prm_file = os.path.join(script_dir, f"{prm_name}.py")
+    prm_file = os.path.join(script_dir, PRM_DIR, f"{prm_name}.py")
     
     if not os.path.exists(prm_file):
         raise FileNotFoundError(f"Could not find prm file: {prm_file}")
 
     spec = importlib.util.spec_from_file_location("prm", prm_file)
     module = importlib.util.module_from_spec(spec)
+    
+    # Explicitly set __file__ before executing module
+    module.__file__ = prm_file
+    module.__loader__ = spec.loader
 
     # Predefine variables expected by the prm module
     module.BASE_DIR = os.path.abspath(os.path.dirname(prm_file))
-    module.NAME = prm_name.split("prm_", 1)[1] if prm_name.startswith("prm_") else prm_name
-    module.OUTPUT_ROOT = os.path.join(module.BASE_DIR, module.NAME)
-
+    # Set NAME to suffix after 'prm_' or default to 'prm'
+    if prm_name.startswith("prm_"):
+        module.NAME = prm_name.split("prm_", 1)[1]
+    elif prm_name == "prm":
+        module.NAME = "prm"
+    else:
+        module.NAME = prm_name
+    
+    # Handle OUTPUT_BASE_LOCATION override
+    if output_base_location is not None:
+        module.OUTPUT_BASE_LOCATION = output_base_location
+    
+    # Execute module (this will set OUTPUT_ROOT based on OUTPUT_BASE_LOCATION)
     spec.loader.exec_module(module)
 
     # Expose as 'prm' for downstream imports
@@ -52,12 +66,22 @@ def load_prm(prm_name: str):
 # Parse command-line or environment override
 # -----------------------------
 parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument('--prm', default=os.environ.get('PRM_MODULE', PRM_MODULE))
+parser.add_argument('--prm', default=os.environ.get('PRM_MODULE', PRM_MODULE),
+                   help='PRM module name to use')
+parser.add_argument('--output-dir', default=os.environ.get('OUTPUT_BASE_LOCATION', None),
+                   help='Base output directory for all outputs (optional)')
 args, _ = parser.parse_known_args()
 prm_module_name = args.prm
+output_base_location = args.output_dir
 
-# Load prm module in parent process
-prm = load_prm(prm_module_name)
+# Load prm module in parent process with optional output directory override
+prm = load_prm(prm_module_name, output_base_location)
+
+# Print output configuration for user awareness
+print(f"\n{'='*60}")
+print(f"Configuration: {prm_module_name}")
+print(f"Output Root: {prm.OUTPUT_ROOT}")
+print(f"{'='*60}\n")
 
 ###############################################################
 # MAIN FUNCTION
@@ -74,17 +98,13 @@ def main():
         "04_predict_parallel.py",
         "05_mosaic_frac.py",
         "05_mosaic_frac_time_series.py",
-        "05_predict_stats.py",
-        "05_visualization/time_series_graph/99_sampling_values_library_multiprocessing.py",
-        "05_visualization/time_series_graph/99_plot_time_series_line.py",
-        "05_visualization/time_series_animation/02_enmapcube_visualization_and_animation_fcover_image_cc.py",
+        "05_predict_stats.py"
     ]
 
     # Scripts that require subprocess execution
     subprocess_scripts = [
         "04_predict_parallel.py",
         "05_predict_stats.py",
-        "05_visualization/time_series_graph/99_sampling_values_library_multiprocessing.py",
     ]
 
     for script in scripts:

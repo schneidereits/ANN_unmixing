@@ -24,20 +24,39 @@ if prm_name.startswith("prm_"):
     NAME = prm_name.split("prm_", 1)[1]
 else:
     NAME = prm_name
-    
+
+# -----------------------
+# OUTPUT LOCATION MANAGEMENT
+# -----------------------
+# CONFIGURABLE: Set your desired output base location here
+# Options:
+#   - Use absolute path: r"C:\path\to\outputs"
+#   - Use relative to project root: "output"
+#   - Use prm directory: None (will default to prm folder)
+OUTPUT_BASE_LOCATION = r"D:\ANN_unmixing\output"  # Set to None to use prm directory
+
+# Resolve output base location
+if OUTPUT_BASE_LOCATION is None:
+    OUTPUT_BASE_LOCATION = BASE_DIR  # Default to prm directory
+elif not os.path.isabs(OUTPUT_BASE_LOCATION):
+    # Make relative paths relative to project root (parent of prm dir)
+    OUTPUT_BASE_LOCATION = os.path.join(os.path.dirname(BASE_DIR), OUTPUT_BASE_LOCATION)
+
+OUTPUT_BASE_LOCATION = os.path.abspath(OUTPUT_BASE_LOCATION)
+
 # Central output root (all produced outputs go here)
-OUTPUT_ROOT = os.path.join(BASE_DIR, NAME)
+OUTPUT_ROOT = os.path.join(OUTPUT_BASE_LOCATION, NAME)
 # create output root if it does not exist when params are imported
 os.makedirs(OUTPUT_ROOT, exist_ok=True)
 
 # -----------------------
 # input data and directory paths 
 # -----------------------
-STM = True
+STM = False
 # Input data files 
-SPECTRAL_LIB = r"D:\ANN_unmixing\data\endmembers\Plant_life_forms_STMS.csv"
+SPECTRAL_LIB = r"data\endmembers\veg_condition_time_series.csv"
 
-BAD_WAVELENGTHS_CSV = r"E:\Project_EnFireMap\01_data\03_spectral_libraries\temp_shawn\resampling\wavelength\bad_wavelengths.csv"
+BAD_WAVELENGTHS_CSV = r"auxiliary\bad_wavelengths.csv"
 if STM:
     BAD_WAVELENGTHS_CSV = None
 
@@ -79,8 +98,8 @@ def filter_endmembers(df: pd.DataFrame, BAND_MAP: dict, numeric_cols: list) -> p
     CAI  = 0.5 * (df[BAND_MAP['2000']] + df[BAND_MAP['2200']]) - df[BAND_MAP['2100']]
 
     # Demo Class-based filters to remove outliers 
-    df = df[~((df['class'] == 'GV') & (NDVI < 0.8))]
-    df = df[~((df['class'] == 'NPV') & (CAI > 0.25))]
+   # df = df[~((df['class'] == 'GV') & (NDVI < 0.8))]
+    #df = df[~((df['class'] == 'NPV') & (CAI > 0.25))]
    
     after_count = len(df)
     print(f"Filtered {before_count - after_count} records. Remaining: {after_count}")
@@ -91,7 +110,7 @@ def filter_endmembers(df: pd.DataFrame, BAND_MAP: dict, numeric_cols: list) -> p
 # ----------------------
 # 02_synthmix
 # ----------------------
-CLASSES = ['GV', 'NPV', 'SUB', 'CHAR']
+CLASSES = ['GV', 'NPV', 'NV']
 SYNTHMIX_INPUT_FILES = [f"{c}.csv" for c in CLASSES]  
 SYNTHMIX_OUTPUT_SPEC = 'mixed_spectra.npy'
 SYNTHMIX_OUTPUT_FRAC = 'fraction_label.npy'
@@ -145,19 +164,19 @@ FILE_NAME_MODEL = 'nn_model'
 N_WORKERS = math.ceil(os.cpu_count() * 0.7)
 PARALLELISM_THREADS = 1  # threads per process (workers * threads = total cores)
 
-CUBE_SPEC = r"/data/Dagobah/enmap/dc_cali/enmap/03_EnMAP_cube/cube_v2_red"
+CUBE_SPEC = r"data\data_cube\time_series"
 CUBE_FRAC = PREDICTIONS_DIR
 
 REG_MODEL_PATH = os.path.join(MODEL_DIR, 'nn_model.keras')
 FN_LOG_FILE = os.path.join(CUBE_FRAC, 'processing_log.csv')
 
-CUBE_AUX_MASKS = r"/data/Dagobah/enmap/dc_cali/enmap/04_aux_data"
-AUX_MASK_FILENAMES = ['LND_2023-2024_MASK_WATER.TIF']
+CUBE_AUX_MASKS = None
+AUX_MASK_FILENAMES = None
 
 CLASS_NAMES = CLASSES
 APPLY_CLIP = True
 APPLY_MASK = True
-APPLY_AUX_MASKS = True
+APPLY_AUX_MASKS = False
 
 IGNORE_HAZE = False
 # Quality sub-masks used when IGNORE_HAZE = True
@@ -169,13 +188,10 @@ QUAL_SUBMASKS = [
 ]
 
 
-# Tiles to process (single authoritative list)
-TILES_TO_PROCESS = ["X0012_Y0028", 
-                    "X0012_Y0029",
-                    "X0012_Y0030",
-                    "X0013_Y0028", 
-                    "X0013_Y0029",
-                    "X0013_Y0030"]
+TILES_TO_PROCESS = ["X0004_Y0014", 
+                    "X0004_Y0015",
+                    "X0005_Y0014",
+                    "X0005_Y0015"]
 
 # ----------------------
 # 05_mosaic_frac

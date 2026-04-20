@@ -13,8 +13,8 @@ import importlib.util
 # PRM
 ###############################################################
 PRM_DIR = "prm"
-PRM_MODULE = "prm_demo"  # Default prm module name (can be overridden by env var or command-line arg)
-# Set desired prm module name here (change to e.g. 'prm_CHAR', 'prm_reduced', or 'prm').
+PRM_MODULE = "prm_demo_veg_condition_time_series"  # Default prm module name (can be overridden by env var or command-line arg)
+# Set desired prm module name here (change to e.g. 'prm_CHAR', 'prm_demo_PLF_STM', etc).
 # This top-level value will be used unless overridden by the environment variable
 # PRM_MODULE or the command-line flag --prm.
 
@@ -23,7 +23,7 @@ PRM_MODULE = "prm_demo"  # Default prm module name (can be overridden by env var
 # Function to load prm module
 # -----------------------------
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-def load_prm(prm_name: str):
+def load_prm(prm_name: str, output_base_location: str = None):
     """Dynamically load a prm module by name and expose it as 'prm'."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     prm_file = os.path.join(script_dir, PRM_DIR, f"{prm_name}.py")
@@ -33,6 +33,10 @@ def load_prm(prm_name: str):
 
     spec = importlib.util.spec_from_file_location("prm", prm_file)
     module = importlib.util.module_from_spec(spec)
+    
+    # Explicitly set __file__ before executing module
+    module.__file__ = prm_file
+    module.__loader__ = spec.loader
 
     # Predefine variables expected by the prm module
     module.BASE_DIR = os.path.abspath(os.path.dirname(prm_file))
@@ -43,10 +47,12 @@ def load_prm(prm_name: str):
         module.NAME = "prm"
     else:
         module.NAME = prm_name
-    # Optional: OUTPUT_ROOT for modules expecting it
-    module.OUTPUT_ROOT = os.path.join(module.BASE_DIR, module.NAME)
-
-    # Execute module
+    
+    # Handle OUTPUT_BASE_LOCATION override
+    if output_base_location is not None:
+        module.OUTPUT_BASE_LOCATION = output_base_location
+    
+    # Execute module (this will set OUTPUT_ROOT based on OUTPUT_BASE_LOCATION)
     spec.loader.exec_module(module)
 
     # Expose as 'prm' for downstream imports
@@ -57,12 +63,22 @@ def load_prm(prm_name: str):
 # Handle command-line or env override
 # -----------------------------
 parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument('--prm', default=os.environ.get('PRM_MODULE', PRM_MODULE))
+parser.add_argument('--prm', default=os.environ.get('PRM_MODULE', PRM_MODULE),
+                   help='PRM module name to use')
+parser.add_argument('--output-dir', default=os.environ.get('OUTPUT_BASE_LOCATION', None),
+                   help='Base output directory for all outputs (optional)')
 args, _ = parser.parse_known_args()
 prm_module_name = args.prm
+output_base_location = args.output_dir
 
-# Load the prm module
-prm = load_prm(prm_module_name)
+# Load the prm module with optional output directory override
+prm = load_prm(prm_module_name, output_base_location)
+
+# Print output configuration for user awareness
+print(f"\n{'='*60}")
+print(f"Configuration: {prm_module_name}")
+print(f"Output Root: {prm.OUTPUT_ROOT}")
+print(f"{'='*60}\n")
 
 
 

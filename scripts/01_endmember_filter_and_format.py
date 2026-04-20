@@ -11,12 +11,16 @@ import seaborn as sns
 
 # Band mapping function
 # ------------------------------------------------------------
-def calc_ndvi_cai(df: pd.DataFrame, required_bands=[670, 800, 2000, 2100, 2200]):
+def calc_ndvi_cai(df: pd.DataFrame, required_bands=[670, 800, 2000, 2100, 2200], wavelength_cols=None):
     """
     Map required bands to closest available numeric columns.
     Returns BAND_MAP dict and list of numeric columns.
     """
-    numeric_cols = [c for c in df.columns if str(c).replace('.', '', 1).isdigit()]
+    if wavelength_cols is None:
+        numeric_cols = [c for c in df.columns if str(c).replace('.', '', 1).isdigit()]
+    else:
+        numeric_cols = wavelength_cols
+    
     numeric_cols_float = [float(c) for c in numeric_cols]
 
     if not numeric_cols:
@@ -45,6 +49,10 @@ def save_endmembers(reflectance_resampled: pd.DataFrame, out_dir: str, wavelengt
     bad_wavelengths = []
     if bad_wavelengths_csv and os.path.exists(bad_wavelengths_csv):
         bad_wavelengths = pd.read_csv(bad_wavelengths_csv, header=None).iloc[:, 0].round(2).tolist()
+    elif bad_wavelengths_csv is None:
+        print("INFO: BAD_WAVELENGTHS_CSV is None. All wavelengths will be retained.")
+    elif not os.path.exists(bad_wavelengths_csv):
+        print(f"WARNING: BAD_WAVELENGTHS_CSV path does not exist: {bad_wavelengths_csv}. All wavelengths will be retained.")
 
     # Filter good wavelengths
     wl_cols_float = [round(float(w), 2) for w in wavelength_cols]
@@ -65,7 +73,7 @@ def save_endmembers(reflectance_resampled: pd.DataFrame, out_dir: str, wavelengt
     # Save each class
     for cls in reflectance_resampled[class_col].unique():
         subset = reflectance_resampled[reflectance_resampled[class_col] == cls]
-        subset_out = subset[good_wavelength_str].copy() * 10000  # scale reflectance
+        subset_out = subset[good_wavelength_str].copy() #* 10000  # scale reflectance
 
         # Sanitize filename
         safe_cls = re.sub(r'[\\/:"*?<>|]+', "_", str(cls))
@@ -255,11 +263,46 @@ def main():
     df = pd.read_csv(SPECTRAL_LIB)
 
     # Identify wavelength columns
-    wavelength_cols = [c for c in df.columns if str(c).replace(".", "").isdigit()]
-    print(f"Found {len(wavelength_cols)} wavelength bands.")
+    # First check for columns containing "band"
+    band_cols = [c for c in df.columns if 'band' in str(c).lower()]
+    
+    if band_cols:
+        print(f"Found {len(band_cols)} band columns")
+        
+        # Load all wavelengths from CSV
+        all_wl_path = r"D:\ANN_unmixing\auxiliary\all_wavelengths.csv"
+        all_wavelengths_df = pd.read_csv(all_wl_path, header=None)
+        all_wavelengths = all_wavelengths_df.iloc[:, 0].tolist()
+        
+        # Load bad wavelengths and filter
+        bad_wl_path = r"D:\ANN_unmixing\auxiliary\bad_wavelengths.csv"
+        bad_wavelengths = []
+        if os.path.exists(bad_wl_path):
+            bad_wl_df = pd.read_csv(bad_wl_path, header=None)
+            bad_wavelengths = bad_wl_df.iloc[:, 0].round(2).tolist()
+        
+        # Match length: if lengths match, filter bad wavelengths; otherwise use all
+        if len(bad_wavelengths) > 0 and len(bad_wavelengths) <= len(all_wavelengths):
+            all_wavelengths_rounded = [round(w, 2) for w in all_wavelengths]
+            good_wavelengths = [w for w in all_wavelengths_rounded if w not in bad_wavelengths]
+            print(f"Filtered to {len(good_wavelengths)} wavelengths (excluded {len(bad_wavelengths)} bad bands)")
+        else:
+            good_wavelengths = [round(w, 2) for w in all_wavelengths]
+            print(f"Using all {len(good_wavelengths)} wavelengths from all_wavelengths.csv")
+        
+        # Create mapping: band_col → wavelength, and wavelength_cols as band names
+        # Rename columns to wavelength values for consistency with rest of pipeline
+        wavelength_rename_map = {band_cols[i]: f"{good_wavelengths[i]:.2f}" for i in range(len(band_cols)) if i < len(good_wavelengths)}
+        df = df.rename(columns=wavelength_rename_map)
+        wavelength_cols = list(wavelength_rename_map.values())
+        print(f"Renamed {len(wavelength_cols)} band columns to wavelength values")
+    else:
+        print("No band columns found. Looking for numeric columns...")
+        wavelength_cols = [c for c in df.columns if str(c).replace(".", "", 1).isdigit()]
+        print(f"Found {len(wavelength_cols)} numeric wavelength bands.")
 
     # Map bands
-    BAND_MAP, numeric_cols = calc_ndvi_cai(df)
+    BAND_MAP, numeric_cols = calc_ndvi_cai(df, wavelength_cols=wavelength_cols)
 
     # Apply filters if requested
     if FILTER_ENDMEMBERS:

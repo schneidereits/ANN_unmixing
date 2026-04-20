@@ -9,7 +9,7 @@ import pandas as pd
 import multiprocessing as mp
 from pathlib import Path
 import sys
-import importlib
+import importlib.util
 ################################################################################
 #                                  User Settings                               #
 ################################################################################
@@ -19,8 +19,19 @@ import importlib
 # Get the module name from the environment
 prm_module_name = os.environ.get('PRM_MODULE')  
 
-# Dynamically import it
-prm = importlib.import_module(prm_module_name)
+if prm_module_name is None:
+    raise ValueError("PRM_MODULE environment variable not set")
+
+# Load the prm module from file using importlib.util
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+prm_file = os.path.join(BASE_DIR, 'prm', f"{prm_module_name}.py")
+
+if not os.path.exists(prm_file):
+    raise FileNotFoundError(f"Could not find prm file: {prm_file}")
+
+spec = importlib.util.spec_from_file_location("prm", prm_file)
+prm = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(prm)
 
 n_workers = prm.N_WORKERS
 parallelism_threads = prm.PARALLELISM_THREADS
@@ -178,7 +189,7 @@ def main():
             fn_frac_img = os.path.join(cube_frac, os.path.relpath(root, cube_spec),
                                        file.replace('SPECTRAL_IMAGE.TIF', 'VEGCOV_FRAC.TIF'))
             aux_mask_files = [os.path.join(cube_aux_masks, os.path.relpath(root, cube_spec), aux)
-                              for aux in aux_mask_filenames]
+                              for aux in aux_mask_filenames] if aux_mask_filenames else []
 
             if any(df_log['Image Name'] == fn_spec_img) and \
                     df_log[df_log['Image Name'] == fn_spec_img]['Status'].iloc[0] == 'DONE':

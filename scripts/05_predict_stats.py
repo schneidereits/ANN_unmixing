@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
-import importlib
+import importlib.util
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import shutil
 import re
@@ -15,14 +15,21 @@ import sys
 # USER SETTINGS
 # -------------------------------------------------------
 
-prm_path = Path(
-    "/data/Dagobah/enmap/dc_global_biomes/spectral_lib/"
-    "synthmix_nn_spectral_lib_modular"
-)
-sys.path.insert(0, str(prm_path))
 prm_module_name = os.environ.get('PRM_MODULE')
-#prm_module_name = "prm_fire_libs_CHAR_filtered"  # override for testing
-prm = importlib.import_module(prm_module_name)
+
+if prm_module_name is None:
+    raise ValueError("PRM_MODULE environment variable not set")
+
+# Load the prm module from file using importlib.util
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+prm_file = os.path.join(BASE_DIR, 'prm', f"{prm_module_name}.py")
+
+if not os.path.exists(prm_file):
+    raise FileNotFoundError(f"Could not find prm file: {prm_file}")
+
+spec = importlib.util.spec_from_file_location("prm", prm_file)
+prm = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(prm)
 
 cube_dir = prm.PREDICTIONS_DIR
 products = prm.PRODUCTS
