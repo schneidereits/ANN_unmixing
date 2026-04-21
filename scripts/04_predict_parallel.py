@@ -10,6 +10,7 @@ import multiprocessing as mp
 from pathlib import Path
 import sys
 import importlib.util
+
 ################################################################################
 #                                  User Settings                               #
 ################################################################################
@@ -48,6 +49,8 @@ apply_aux_masks = prm.APPLY_AUX_MASKS
 tiles_to_process = prm.TILES_TO_PROCESS
 ignore_haze = prm.IGNORE_HAZE
 QUAL_SUBMASKS = prm.QUAL_SUBMASKS
+stm = prm.STM  # New STM flag
+DATA_CUBE_FORMAT = prm.DATA_CUBE_FORMAT
 
 ################################################################################
 #                           Function Definitions                               #
@@ -86,7 +89,7 @@ def predict_tile(task):
     
     (fn_spec_img, fn_mask_noda, qual_mask_files, fn_frac_img,
      fn_reg_model, class_names, apply_clip, apply_mask,
-     apply_aux_masks, aux_mask_files,ignore_haze) = task
+     apply_aux_masks, aux_mask_files, ignore_haze, stm) = task
 
     try:
         ds = gdal.Open(fn_spec_img)
@@ -166,30 +169,57 @@ def main():
     tasks = []
 
     for root, dirs, files in os.walk(cube_spec):
-        tiles_pattern = re.compile("|".join(tiles_to_process))
-        if not tiles_pattern.search(os.path.basename(root)):
-            continue
-
-        for file in files:
-            if not file.endswith('SPECTRAL_IMAGE.TIF'):
+        # Only apply subfolder pattern filtering if DATA_CUBE_FORMAT is True
+        if DATA_CUBE_FORMAT:
+            tiles_pattern = re.compile("|".join(tiles_to_process))
+            if not tiles_pattern.search(os.path.basename(root)):
                 continue
 
-            fn_spec_img = os.path.join(root, file)
-            fn_mask_noda = fn_spec_img.replace('SPECTRAL_IMAGE.TIF', 'MASK_NODA.TIF')
-            if ignore_haze:
-                qual_mask_files = [
-                    fn_spec_img.replace('SPECTRAL_IMAGE.TIF', m)
-                    for m in QUAL_SUBMASKS
-                ]
+        for file in files:
+            # Handle both regular spectral images and STM files
+            if DATA_CUBE_FORMAT:
+                if not (file.endswith('SPECTRAL_IMAGE.TIF') or (stm and file.endswith('STMS.vrt'))):
+                    continue
             else:
-                qual_mask_files = [
-                    fn_spec_img.replace('SPECTRAL_IMAGE.TIF', 'MASK_QUAL.TIF')
-                ]
+                # If DATA_CUBE_FORMAT is False, loop over all spectral image .tif or stm.vrt files
+                if not (file.endswith('.TIF') or file.endswith('.vrt')):
+                    continue
 
-            fn_frac_img = os.path.join(cube_frac, os.path.relpath(root, cube_spec),
-                                       file.replace('SPECTRAL_IMAGE.TIF', 'VEGCOV_FRAC.TIF'))
-            aux_mask_files = [os.path.join(cube_aux_masks, os.path.relpath(root, cube_spec), aux)
-                              for aux in aux_mask_filenames] if aux_mask_filenames else []
+            # Determine file paths based on STM flag
+            if stm:
+                fn_spec_img = os.path.join(root, file)
+                fn_mask_noda = fn_spec_img.replace('STMS.vrt', 'MASK_NODA.TIF')
+                if ignore_haze:
+                    qual_mask_files = [
+                        fn_spec_img.replace('STMS.vrt', m)
+                        for m in QUAL_SUBMASKS
+                    ]
+                else:
+                    qual_mask_files = [
+                        fn_spec_img.replace('STMS.vrt', 'MASK_QUAL.TIF')
+                    ]
+
+                fn_frac_img = os.path.join(cube_frac, os.path.relpath(root, cube_spec),
+                                           file.replace('STMS.vrt', 'VEGCOV_FRAC.TIF'))
+                aux_mask_files = [os.path.join(cube_aux_masks, os.path.relpath(root, cube_spec), aux)
+                                  for aux in aux_mask_filenames] if aux_mask_filenames else []
+            else:
+                fn_spec_img = os.path.join(root, file)
+                fn_mask_noda = fn_spec_img.replace('SPECTRAL_IMAGE.TIF', 'MASK_NODA.TIF')
+                if ignore_haze:
+                    qual_mask_files = [
+                        fn_spec_img.replace('SPECTRAL_IMAGE.TIF', m)
+                        for m in QUAL_SUBMASKS
+                    ]
+                else:
+                    qual_mask_files = [
+                        fn_spec_img.replace('SPECTRAL_IMAGE.TIF', 'MASK_QUAL.TIF')
+                    ]
+
+                fn_frac_img = os.path.join(cube_frac, os.path.relpath(root, cube_spec),
+                                           file.replace('SPECTRAL_IMAGE.TIF', 'VEGCOV_FRAC.TIF'))
+                aux_mask_files = [os.path.join(cube_aux_masks, os.path.relpath(root, cube_spec), aux)
+                                  for aux in aux_mask_filenames] if aux_mask_filenames else []
 
             if any(df_log['Image Name'] == fn_spec_img) and \
                     df_log[df_log['Image Name'] == fn_spec_img]['Status'].iloc[0] == 'DONE':
@@ -197,9 +227,10 @@ def main():
 
             tasks.append((fn_spec_img, fn_mask_noda, qual_mask_files, fn_frac_img,
                           fn_reg_model, class_names, apply_clip, apply_mask,
-                          apply_aux_masks, aux_mask_files,ignore_haze))
+                          apply_aux_masks, aux_mask_files, ignore_haze, stm))
 
     # Parallel processing
+    print(f'\nProcessing {len(tasks)} files...')
     results = []
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
         futures = [executor.submit(predict_tile, t) for t in tasks]
@@ -217,4 +248,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

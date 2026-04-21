@@ -53,6 +53,10 @@ os.makedirs(OUTPUT_ROOT, exist_ok=True)
 # input data and directory paths 
 # -----------------------
 STM = True
+# STM-specific parameters (when STM=True)
+STM_METRICS = ['p10', 'p25', 'p50', 'p75', 'p90']  # Percentiles/metrics for each wavelength band
+STM_N_BAND_PER_METRIC = 204  # Number of unique wavelength bands per metric (204 wavelengths x 5 metrics = 1020 total)
+
 # Input data files 
 SPECTRAL_LIB = r"data\endmembers\Plant_life_forms_STMS.csv"
 
@@ -141,9 +145,13 @@ INCL_PURE_LIBRARY = False
 # Adpated from Klehr et al. 2025, with adjustment for  MODEL_DENSE_UNITS and EPOCHS
 # https://doi.org/10.1016/j.rse.2025.114740
 # -----------------------
-MODEL_INPUT_SHAPE = (1020,)
-MODEL_DENSE_UNITS = 256
-MODEL_N_LAYERS = 5
+MODEL_INPUT_SHAPE = (204,)
+# When STM=True: MODEL_INPUT_SHAPE = len(STM_METRICS) * STM_N_BAND_PER_METRIC
+if STM:
+    MODEL_INPUT_SHAPE = (len(STM_METRICS) * STM_N_BAND_PER_METRIC,)  
+    
+MODEL_DENSE_UNITS = 8
+MODEL_N_LAYERS = 1
 MODEL_NUM_CLASSES = len(CLASSES)
 
 EPOCHS = 10
@@ -166,8 +174,8 @@ FILE_NAME_MODEL = 'nn_model'
 # ----------------------
 # 04_predict_parallel (parameters for prediction workflows)
 # ----------------------
-N_WORKERS = math.ceil(os.cpu_count() * 0.7)
-PARALLELISM_THREADS = 1  # threads per process (workers * threads = total cores)
+N_WORKERS = math.ceil(os.cpu_count() * 0.2)
+PARALLELISM_THREADS = 4  # threads per process (workers * threads = total cores)
 
 CUBE_SPEC = r"data\data_cube\STM"
 CUBE_FRAC = PREDICTIONS_DIR
@@ -181,7 +189,7 @@ AUX_MASK_FILENAMES = None
 CLASS_NAMES = CLASSES
 APPLY_CLIP = False
 APPLY_MASK = False
-APPLY_AUX_MASKS = True
+APPLY_AUX_MASKS = False
 
 IGNORE_HAZE = False
 # Quality sub-masks used when IGNORE_HAZE = True
