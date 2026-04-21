@@ -14,7 +14,7 @@ import subprocess
 # PRM
 ###############################################################
 PRM_DIR = "prm"
-PRM_MODULE = "prm_demo_veg_condition_time_series"  # Default prm module name (can be overridden by env var or command-line arg)
+PRM_MODULE = "prm_demo_PLF_STM"  # Default prm module name (can be overridden by env var or command-line arg)
 # Set desired prm module name here (change to e.g. 'prm_CHAR', 'prm_demo_PLF_STM', etc).
 # This top-level value will be used unless overridden by the environment variable
 # PRM_MODULE or the command-line flag --prm.

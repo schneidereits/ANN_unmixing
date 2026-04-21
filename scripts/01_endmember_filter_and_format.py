@@ -1,6 +1,6 @@
 import os
 from prm import *
-from prm import SPECTRAL_LIB, BAD_WAVELENGTHS_CSV, ENDMEMBER_DIR, CLASS_COL, FILTER_ENDMEMBERS, CLASSES
+from prm import SPECTRAL_LIB, BAD_WAVELENGTHS_CSV, ENDMEMBER_DIR, CLASS_COL, FILTER_ENDMEMBERS, CLASSES, STM
 import pandas as pd
 import inspect
 import re
@@ -167,15 +167,65 @@ def plot_spectra_by_class(df: pd.DataFrame, wavelength_cols: list, class_col: st
     # -----------------------------
     # Combined plot of all classes
     # -----------------------------
-    n_classes = len(CLASSES)
+    # Get actual unique classes from the data
+    classes = df[class_col].unique()
+    
+    # If CLASSES is defined and has fewer classes, use it to maintain order
+    # Otherwise, use the actual classes in the data
+    if 'CLASSES' in globals() and len(CLASSES) > 0:
+        # Ensure all classes in CLASSES exist in the data
+        actual_classes_in_data = set(classes)
+        valid_classes = [c for c in CLASSES if c in actual_classes_in_data]
+        # Add any missing classes from data
+        missing_classes = [c for c in classes if c not in CLASSES]
+        ordered_classes = valid_classes + missing_classes
+    else:
+        ordered_classes = list(classes)
+    
+    n_classes = len(ordered_classes)
     n_cols = 2  # number of columns in the facet layout
     n_rows = math.ceil(n_classes / n_cols)
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 5 * n_rows), sharex=True, sharey=True)
     axes = axes.flatten()
-    for i, cls in enumerate(CLASSES):
+    
+    # Define specific colors for known classes
+    specific_colors = {
+        "GV": "green",
+        "NPV": "red",
+        "SUB": "blue",
+        "CHAR": "black"
+    }
+
+    # Build class_colors dynamically from ordered_classes, using specific colors where available
+    class_colors = specific_colors.copy()
+    missing_classes = [c for c in ordered_classes if c not in class_colors]
+    if missing_classes:
+        # Assign colors from a default palette for additional classes
+        default_palette = sns.color_palette("tab10", n_colors=len(missing_classes))
+        for c, color in zip(missing_classes, default_palette):
+            class_colors[c] = color
+
+    # Build palette map: if any classes are missing from `class_colors`, assign
+    # them colors from a default seaborn palette so all classes get a color.
+    palette_map = class_colors.copy()
+    missing_classes = [c for c in ordered_classes if c not in palette_map]
+    if missing_classes:
+        default_palette = sns.color_palette("tab10", n_colors=max(len(missing_classes), 1))
+        for i, c in enumerate(missing_classes):
+            palette_map[c] = default_palette[i % len(default_palette)]
+
+    for i, cls in enumerate(ordered_classes):
+        if i >= len(axes):
+            break
+            
         ax = axes[i]
         subset = df[df[class_col] == cls]
+        
+        # Skip empty subsets
+        if len(subset) == 0:
+            continue
+            
         color = palette_map.get(cls, "gray")
 
         # Plot individual spectra
@@ -212,7 +262,9 @@ def plot_spectra_by_class(df: pd.DataFrame, wavelength_cols: list, class_col: st
     ####################################
     # NDVI vs CAI plot
     #######################################
-    
+    if STM:
+        print("NDVI or CAI columns not found. Skipping NDVI vs CAI plot.")
+        return
     df = df[df[CLASS_COL].isin(CLASSES)].copy()
     # palette_map is reused here to ensure all classes have colors
 

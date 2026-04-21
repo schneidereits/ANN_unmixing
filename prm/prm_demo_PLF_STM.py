@@ -115,7 +115,7 @@ def filter_endmembers(df: pd.DataFrame, BAND_MAP: dict, numeric_cols: list) -> p
 # ----------------------
 # 02_synthmix
 # ----------------------
-CLASSES = ['GV', 'NPV', 'SUB', 'CHAR']
+CLASSES = ["btr", "ntr", "shr", "her", "nve"]
 SYNTHMIX_INPUT_FILES = [f"{c}.csv" for c in CLASSES]  
 SYNTHMIX_OUTPUT_SPEC = 'mixed_spectra.npy'
 SYNTHMIX_OUTPUT_FRAC = 'fraction_label.npy'
@@ -141,7 +141,7 @@ INCL_PURE_LIBRARY = False
 # Adpated from Klehr et al. 2025, with adjustment for  MODEL_DENSE_UNITS and EPOCHS
 # https://doi.org/10.1016/j.rse.2025.114740
 # -----------------------
-MODEL_INPUT_SHAPE = (204,)
+MODEL_INPUT_SHAPE = (1020,)
 MODEL_DENSE_UNITS = 256
 MODEL_N_LAYERS = 5
 MODEL_NUM_CLASSES = len(CLASSES)
