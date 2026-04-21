@@ -174,7 +174,7 @@ FILE_NAME_MODEL = 'nn_model'
 # ----------------------
 # 04_predict_parallel (parameters for prediction workflows)
 # ----------------------
-N_WORKERS = math.ceil(os.cpu_count() * 0.2)
+N_WORKERS = math.ceil(os.cpu_count() * 0.1)
 PARALLELISM_THREADS = 4  # threads per process (workers * threads = total cores)
 
 CUBE_SPEC = r"data\data_cube\STM"

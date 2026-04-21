@@ -54,11 +54,12 @@ os.makedirs(OUTPUT_ROOT, exist_ok=True)
 # -----------------------
 STM = False
 # STM-specific parameters (when STM=True)
-STM_METRICS = ['p10', 'p25', 'p50', 'p75', 'p90']  # Percentiles/metrics for each wavelength band
-STM_N_BAND_PER_METRIC = 204  # Number of unique wavelength bands per metric (204 wavelengths x 5 metrics = 1020 total)
+if STM:
+    STM_METRICS = ['p10', 'p25', 'p50', 'p75', 'p90']  # Percentiles/metrics for each wavelength band
+    STM_N_BAND_PER_METRIC = 204  # Number of unique wavelength bands per metric (204 wavelengths x 5 metrics = 1020 total)
 
 # Input data files 
-SPECTRAL_LIB = r"data\endmembers\veg_condition_time_series.csv"
+SPECTRAL_LIB = r"data\demodata_taylorM\lib_without_eco\lib_combined.csv"
 
 BAD_WAVELENGTHS_CSV = r"auxiliary\bad_wavelengths.csv"
 if STM:
@@ -87,7 +88,7 @@ os.makedirs(VISUALIZATION_DIR, exist_ok=True)
 # -----------------------
 # 01 endmember filtering
 # -----------------------
-FILTER_ENDMEMBERS = True  # Set to False to skip filtering and use the full library
+FILTER_ENDMEMBERS = False  # Set to False to skip filtering and use the full library
 # Define a function to apply the filtering logic to the endmember DataFrame
 
 def filter_endmembers(df: pd.DataFrame, BAND_MAP: dict, numeric_cols: list) -> pd.DataFrame:
@@ -173,7 +174,7 @@ FILE_NAME_MODEL = 'nn_model'
 N_WORKERS = math.ceil(os.cpu_count() * 0.7)
 PARALLELISM_THREADS = 1  # threads per process (workers * threads = total cores)
 
-CUBE_SPEC = r"data\data_cube\time_series"
+CUBE_SPEC = r"data\demodata_taylorM\img_sub"
 CUBE_FRAC = PREDICTIONS_DIR
 
 REG_MODEL_PATH = os.path.join(MODEL_DIR, 'nn_model.keras')
@@ -183,8 +184,8 @@ CUBE_AUX_MASKS = None
 AUX_MASK_FILENAMES = None
 
 CLASS_NAMES = CLASSES
-APPLY_CLIP = True
-APPLY_MASK = True
+APPLY_CLIP = False
+APPLY_MASK = False
 APPLY_AUX_MASKS = False
 
 IGNORE_HAZE = False
@@ -196,11 +197,14 @@ QUAL_SUBMASKS = [
     'QL_QUALITY_SNOW.TIF'
 ]
 
-
-TILES_TO_PROCESS = ["X0004_Y0014", 
-                    "X0004_Y0015",
-                    "X0005_Y0014",
-                    "X0005_Y0015"]
+# Is the input data in FORCE data cube format? (Single EnMAP scenes with subfolders per tile)
+DATA_CUBE_FORMAT = False
+# If True, specify the list of tiles to process 
+if DATA_CUBE_FORMAT:
+    TILES_TO_PROCESS = ["X0004_Y0014", 
+                        "X0004_Y0015",
+                        "X0005_Y0014",
+                        "X0005_Y0015"]
 
 # ----------------------
 # 05_mosaic_frac

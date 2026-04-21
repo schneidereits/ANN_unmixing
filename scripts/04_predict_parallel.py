@@ -50,7 +50,6 @@ tiles_to_process = prm.TILES_TO_PROCESS
 ignore_haze = prm.IGNORE_HAZE
 QUAL_SUBMASKS = prm.QUAL_SUBMASKS
 stm = prm.STM  # New STM flag
-DATA_CUBE_FORMAT = prm.DATA_CUBE_FORMAT
 
 ################################################################################
 #                           Function Definitions                               #
@@ -169,21 +168,14 @@ def main():
     tasks = []
 
     for root, dirs, files in os.walk(cube_spec):
-        # Only apply subfolder pattern filtering if DATA_CUBE_FORMAT is True
-        if DATA_CUBE_FORMAT:
-            tiles_pattern = re.compile("|".join(tiles_to_process))
-            if not tiles_pattern.search(os.path.basename(root)):
-                continue
+        tiles_pattern = re.compile("|".join(tiles_to_process))
+        if not tiles_pattern.search(os.path.basename(root)):
+            continue
 
         for file in files:
             # Handle both regular spectral images and STM files
-            if DATA_CUBE_FORMAT:
-                if not (file.endswith('SPECTRAL_IMAGE.TIF') or (stm and file.endswith('STMS.vrt'))):
-                    continue
-            else:
-                # If DATA_CUBE_FORMAT is False, loop over all spectral image .tif or stm.vrt files
-                if not (file.endswith('.TIF') or file.endswith('.vrt')):
-                    continue
+            if not (file.endswith('SPECTRAL_IMAGE.TIF') or (stm and file.endswith('STMS.vrt'))):
+                continue
 
             # Determine file paths based on STM flag
             if stm:
@@ -230,7 +222,6 @@ def main():
                           apply_aux_masks, aux_mask_files, ignore_haze, stm))
 
     # Parallel processing
-    print(f'\nProcessing {len(tasks)} files...')
     results = []
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
         futures = [executor.submit(predict_tile, t) for t in tasks]
