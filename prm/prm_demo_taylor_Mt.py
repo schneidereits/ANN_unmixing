@@ -54,9 +54,8 @@ os.makedirs(OUTPUT_ROOT, exist_ok=True)
 # -----------------------
 STM = False
 # STM-specific parameters (when STM=True)
-if STM:
-    STM_METRICS = ['p10', 'p25', 'p50', 'p75', 'p90']  # Percentiles/metrics for each wavelength band
-    STM_N_BAND_PER_METRIC = 204  # Number of unique wavelength bands per metric (204 wavelengths x 5 metrics = 1020 total)
+STM_METRICS = ['p10', 'p25', 'p50', 'p75', 'p90']  # Percentiles/metrics for each wavelength band
+STM_N_BAND_PER_METRIC = 204  # Number of unique wavelength bands per metric (204 wavelengths x 5 metrics = 1020 total)
 
 # Input data files 
 SPECTRAL_LIB = r"data\demodata_taylorM\lib_without_eco\lib_combined.csv"
@@ -171,14 +170,15 @@ FILE_NAME_MODEL = 'nn_model'
 # ----------------------
 # 04_predict_parallel (parameters for prediction workflows)
 # ----------------------
-N_WORKERS = math.ceil(os.cpu_count() * 0.7)
+N_WORKERS = math.ceil(os.cpu_count() * 0.5)
 PARALLELISM_THREADS = 1  # threads per process (workers * threads = total cores)
 
 CUBE_SPEC = r"data\demodata_taylorM\img_sub"
-CUBE_FRAC = PREDICTIONS_DIR
+CUBE_SPEC = r"data\data_cube\time_series\X0004_Y0014"
+
 
 REG_MODEL_PATH = os.path.join(MODEL_DIR, 'nn_model.keras')
-FN_LOG_FILE = os.path.join(CUBE_FRAC, 'processing_log.csv')
+FN_LOG_FILE = os.path.join(PREDICTIONS_DIR, 'processing_log.csv')
 
 CUBE_AUX_MASKS = None
 AUX_MASK_FILENAMES = None
@@ -201,10 +201,7 @@ QUAL_SUBMASKS = [
 DATA_CUBE_FORMAT = False
 # If True, specify the list of tiles to process 
 if DATA_CUBE_FORMAT:
-    TILES_TO_PROCESS = ["X0004_Y0014", 
-                        "X0004_Y0015",
-                        "X0005_Y0014",
-                        "X0005_Y0015"]
+    TILES_TO_PROCESS = []
 
 # ----------------------
 # 05_mosaic_frac

@@ -37,7 +37,7 @@ spec.loader.exec_module(prm)
 n_workers = prm.N_WORKERS
 parallelism_threads = prm.PARALLELISM_THREADS
 cube_spec = prm.CUBE_SPEC
-cube_frac = prm.CUBE_FRAC
+PREDICTIONS_DIR = prm.PREDICTIONS_DIR
 fn_reg_model = prm.REG_MODEL_PATH
 fn_log_file = prm.FN_LOG_FILE
 cube_aux_masks = prm.CUBE_AUX_MASKS
@@ -46,10 +46,16 @@ class_names = prm.CLASS_NAMES
 apply_clip = prm.APPLY_CLIP
 apply_mask = prm.APPLY_MASK
 apply_aux_masks = prm.APPLY_AUX_MASKS
-tiles_to_process = prm.TILES_TO_PROCESS
+try:
+    tiles_to_process = prm.TILES_TO_PROCESS
+except AttributeError:
+     tiles_to_process = []
 ignore_haze = prm.IGNORE_HAZE
 QUAL_SUBMASKS = prm.QUAL_SUBMASKS
 stm = prm.STM  # New STM flag
+DATA_CUBE_FORMAT = prm.DATA_CUBE_FORMAT  # New data cube format flag
+PRODUCTS = prm.PRODUCTS  # Products list for output file naming
+
 
 ################################################################################
 #                           Function Definitions                               #
@@ -153,6 +159,8 @@ def predict_tile(task):
 ################################################################################
 #                               Execution                                      #
 ################################################################################
+
+
 def main():
     """
     Process all spectral tiles in parallel and save results to log file.
@@ -164,54 +172,47 @@ def main():
     else:
         df_log = pd.DataFrame(columns=['Image Name', 'Status'])
 
-    subfolder_pattern = r"X\d{4}_Y\d{4}"
     tasks = []
 
     for root, dirs, files in os.walk(cube_spec):
-        tiles_pattern = re.compile("|".join(tiles_to_process))
-        if not tiles_pattern.search(os.path.basename(root)):
-            continue
-
+        # Only check tile pattern if DATA_CUBE_FORMAT is True
+        if DATA_CUBE_FORMAT:
+            tiles_pattern = re.compile("|".join(tiles_to_process))
+            if not tiles_pattern.search(os.path.basename(root)):
+                continue
+        
         for file in files:
-            # Handle both regular spectral images and STM files
-            if not (file.endswith('SPECTRAL_IMAGE.TIF') or (stm and file.endswith('STMS.vrt'))):
+            # Handle both regular spectral images and STM files (case insensitive)
+            file_lower = file.lower()
+            if not ('spectral_image' in file_lower or (stm and 'stms.vrt' in file_lower)):
                 continue
 
             # Determine file paths based on STM flag
-            if stm:
-                fn_spec_img = os.path.join(root, file)
-                fn_mask_noda = fn_spec_img.replace('STMS.vrt', 'MASK_NODA.TIF')
-                if ignore_haze:
-                    qual_mask_files = [
-                        fn_spec_img.replace('STMS.vrt', m)
-                        for m in QUAL_SUBMASKS
-                    ]
-                else:
-                    qual_mask_files = [
-                        fn_spec_img.replace('STMS.vrt', 'MASK_QUAL.TIF')
-                    ]
+            # 1. Identify the target suffix based on the STM flag
+            suffix = 'STMS.vrt' if stm else 'SPECTRAL_IMAGE.TIF'
+            rel_path = os.path.relpath(root, cube_spec)
 
-                fn_frac_img = os.path.join(cube_frac, os.path.relpath(root, cube_spec),
-                                           file.replace('STMS.vrt', 'VEGCOV_FRAC.TIF'))
-                aux_mask_files = [os.path.join(cube_aux_masks, os.path.relpath(root, cube_spec), aux)
-                                  for aux in aux_mask_filenames] if aux_mask_filenames else []
+            # 2. Assign paths using the suffix
+            fn_spec_img = os.path.join(root, file)
+            fn_mask_noda = fn_spec_img.replace(suffix, 'MASK_NODA.TIF')
+
+            # 3. Handle quality masks
+            mask_sources = QUAL_SUBMASKS if ignore_haze else ['MASK_QUAL.TIF']
+            qual_mask_files = [fn_spec_img.replace(suffix, m) for m in mask_sources]
+
+            # 4. Handle fraction and auxiliary files
+            if DATA_CUBE_FORMAT:
+                fn_frac_img = os.path.join(PREDICTIONS_DIR, rel_path, file.replace(suffix, 'VEGCOV_FRAC.TIF'))
             else:
-                fn_spec_img = os.path.join(root, file)
-                fn_mask_noda = fn_spec_img.replace('SPECTRAL_IMAGE.TIF', 'MASK_NODA.TIF')
-                if ignore_haze:
-                    qual_mask_files = [
-                        fn_spec_img.replace('SPECTRAL_IMAGE.TIF', m)
-                        for m in QUAL_SUBMASKS
-                    ]
-                else:
-                    qual_mask_files = [
-                        fn_spec_img.replace('SPECTRAL_IMAGE.TIF', 'MASK_QUAL.TIF')
-                    ]
-
-                fn_frac_img = os.path.join(cube_frac, os.path.relpath(root, cube_spec),
-                                           file.replace('SPECTRAL_IMAGE.TIF', 'VEGCOV_FRAC.TIF'))
-                aux_mask_files = [os.path.join(cube_aux_masks, os.path.relpath(root, cube_spec), aux)
-                                  for aux in aux_mask_filenames] if aux_mask_filenames else []
+                # For flat structure, just use the filename without subdirectory
+                base_filename = os.path.basename(file).replace(suffix, 'VEGCOV_FRAC.TIF')
+                fn_frac_img = os.path.join(PREDICTIONS_DIR, base_filename)
+                
+                
+            aux_mask_files = [
+                os.path.join(cube_aux_masks, rel_path, aux) 
+                for aux in (aux_mask_filenames or [])
+            ]
 
             if any(df_log['Image Name'] == fn_spec_img) and \
                     df_log[df_log['Image Name'] == fn_spec_img]['Status'].iloc[0] == 'DONE':

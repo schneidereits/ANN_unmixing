@@ -174,10 +174,9 @@ N_WORKERS = math.ceil(os.cpu_count() * 0.7)
 PARALLELISM_THREADS = 1  # threads per process (workers * threads = total cores)
 
 CUBE_SPEC = r"data\data_cube\time_series"
-CUBE_FRAC = PREDICTIONS_DIR
 
 REG_MODEL_PATH = os.path.join(MODEL_DIR, 'nn_model.keras')
-FN_LOG_FILE = os.path.join(CUBE_FRAC, 'processing_log.csv')
+FN_LOG_FILE = os.path.join(PREDICTIONS_DIR, 'processing_log.csv')
 
 CUBE_AUX_MASKS = None
 AUX_MASK_FILENAMES = None
@@ -196,7 +195,7 @@ QUAL_SUBMASKS = [
     'QL_QUALITY_SNOW.TIF'
 ]
 
-
+DATA_CUBE_FORMAT = True
 TILES_TO_PROCESS = ["X0004_Y0014", 
                     "X0004_Y0015",
                     "X0005_Y0014",

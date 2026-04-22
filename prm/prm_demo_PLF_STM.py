@@ -178,10 +178,9 @@ N_WORKERS = math.ceil(os.cpu_count() * 0.1)
 PARALLELISM_THREADS = 4  # threads per process (workers * threads = total cores)
 
 CUBE_SPEC = r"data\data_cube\STM"
-CUBE_FRAC = PREDICTIONS_DIR
 
 REG_MODEL_PATH = os.path.join(MODEL_DIR, 'nn_model.keras')
-FN_LOG_FILE = os.path.join(CUBE_FRAC, 'processing_log.csv')
+FN_LOG_FILE = os.path.join(PREDICTIONS_DIR, 'processing_log.csv')
 
 CUBE_AUX_MASKS =None
 AUX_MASK_FILENAMES = None
