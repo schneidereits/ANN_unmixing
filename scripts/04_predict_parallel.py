@@ -209,7 +209,7 @@ def main():
                 fn_frac_img = os.path.join(PREDICTIONS_DIR, rel_path, file.replace(suffix, 'VEGCOV_FRAC.TIF'))
             else:
                 # For flat structure, just use the filename without subdirectory
-                base_filename = os.path.basename(file).replace(suffix, 'VEGCOV_FRAC.TIF')
+                base_filename = os.path.basename(file).lower().replace(suffix.lower(), 'VEGCOV_FRAC.TIF')
                 fn_frac_img = os.path.join(PREDICTIONS_DIR, base_filename)
                 
                 

@@ -58,7 +58,7 @@ STM_METRICS = ['p10', 'p25', 'p50', 'p75', 'p90']  # Percentiles/metrics for eac
 STM_N_BAND_PER_METRIC = 204  # Number of unique wavelength bands per metric (204 wavelengths x 5 metrics = 1020 total)
 
 # Input data files 
-SPECTRAL_LIB = r"data\demodata_taylorM\lib_without_eco\lib_combined.csv"
+SPECTRAL_LIB = r"data\demodata_taylorM\lib_with_eco\lib_combined.csv"
 
 BAD_WAVELENGTHS_CSV = r"auxiliary\bad_wavelengths.csv"
 if STM:

@@ -14,10 +14,6 @@ from prm import PREDICTIONS_DIR, PRODUCTS, CLASSES, DATA_CUBE_FORMAT
 ################################################################################
 #                                  User Settings                               #
 ################################################################################
-
-cube_dir = PREDICTIONS_DIR
-products = PRODUCTS
-
 BAND_NAMES = CLASSES  # Must match band order in each TIF
 
 ################################################################################
@@ -51,17 +47,17 @@ def get_stem(filename):
     return os.path.splitext(filename)[0]
 
 
-def collect_mosaic_vrts(mosaic_dir, products):
+def collect_mosaic_vrts(mosaic_dir, PRODUCTS):
     """
     Collect all per-date VRTs from the mosaic/ folder, grouped by product suffix.
     Returns a dict: { product_ext: [ (date_str, full_vrt_path), ... ] }
     sorted by date ascending.
     """
     print('\n--> Collecting per-date VRTs from mosaic folder')
-    result = {p: [] for p in products}
+    result = {p: [] for p in PRODUCTS}
 
     for f in sorted(os.listdir(mosaic_dir)):
-        for product in products:
+        for product in PRODUCTS:
             product_vrt = os.path.splitext(product)[0] + '.vrt'
            
             if f.endswith(product_vrt):
@@ -69,7 +65,7 @@ def collect_mosaic_vrts(mosaic_dir, products):
                 if date:
                     result[product].append((date, os.path.join(mosaic_dir, f)))
 
-    for product in products:
+    for product in PRODUCTS:
         result[product].sort(key=lambda x: x[0])
         print(f'    ... {product}: found {len(result[product])} VRTs')
 
@@ -198,17 +194,17 @@ def main():
     print('\n=== Time Series VRT Builder Started ===')
 
     # Step 1: Resolve the existing mosaic/ subfolder (must already exist)
-    mosaic_dir = os.path.join(cube_dir, 'mosaic')
+    mosaic_dir = os.path.join(PREDICTIONS_DIR, 'mosaic')
     if not isdir(mosaic_dir):
         print(f'{RED}ERROR: mosaic/ folder not found at {mosaic_dir}{RESET}')
         print('Run the original mosaic script first to generate per-date VRTs.')
         return
 
     # Step 2: Create output subfolder
-    mosaic_ts_dir = create_subfolder(cube_dir, 'mosaic_timeseries')
+    mosaic_ts_dir = create_subfolder(PREDICTIONS_DIR, 'mosaic_timeseries')
 
     # Step 3: Collect per-date VRTs from mosaic/, grouped by product
-    vrts_by_product = collect_mosaic_vrts(mosaic_dir, products)
+    vrts_by_product = collect_mosaic_vrts(mosaic_dir, PRODUCTS)
 
     # Step 4: Write one time series VRT per band with hand-crafted XML
     build_timeseries_vrts(vrts_by_product, mosaic_ts_dir, BAND_NAMES)
