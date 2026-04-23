@@ -8,7 +8,7 @@ import shutil
 from os import mkdir
 from os.path import isdir
 from osgeo import gdal
-from prm import PREDICTIONS_DIR, PRODUCTS, CLASSES
+from prm import PREDICTIONS_DIR, PRODUCTS, CLASSES, DATA_CUBE_FORMAT
 
 
 ################################################################################
@@ -63,6 +63,7 @@ def collect_mosaic_vrts(mosaic_dir, products):
     for f in sorted(os.listdir(mosaic_dir)):
         for product in products:
             product_vrt = os.path.splitext(product)[0] + '.vrt'
+           
             if f.endswith(product_vrt):
                 date = extract_date(f)
                 if date:

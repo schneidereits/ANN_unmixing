@@ -52,7 +52,7 @@ except AttributeError:
      tiles_to_process = []
 ignore_haze = prm.IGNORE_HAZE
 QUAL_SUBMASKS = prm.QUAL_SUBMASKS
-stm = prm.STM  # New STM flag
+STM = prm.STM  # New STM flag
 DATA_CUBE_FORMAT = prm.DATA_CUBE_FORMAT  # New data cube format flag
 PRODUCTS = prm.PRODUCTS  # Products list for output file naming
 
@@ -94,7 +94,7 @@ def predict_tile(task):
     
     (fn_spec_img, fn_mask_noda, qual_mask_files, fn_frac_img,
      fn_reg_model, class_names, apply_clip, apply_mask,
-     apply_aux_masks, aux_mask_files, ignore_haze, stm) = task
+     apply_aux_masks, aux_mask_files, ignore_haze, STM) = task
 
     try:
         ds = gdal.Open(fn_spec_img)
@@ -104,19 +104,23 @@ def predict_tile(task):
         projection = ds.GetProjection()
 
         # --- Always apply no-data mask ---
-        mask_noda = gdal.Open(fn_mask_noda).ReadAsArray() == 1
-        null_mask = mask_noda.copy()   # initialize with no-data mask
+        if DATA_CUBE_FORMAT and not STM:
+            mask_noda = gdal.Open(fn_mask_noda).ReadAsArray() == 1
+            null_mask = mask_noda.copy()   # initialize with no-data mask
+        else:
+            null_mask = np.zeros(x.shape[0:2], dtype=bool)  # start with no mask
 
-        if apply_mask & ignore_haze == False:
-            mask_qual = gdal.Open(qual_mask_files[0]).ReadAsArray() == 1
-            null_mask = np.logical_or(null_mask, mask_qual)
-            
-        if apply_mask & ignore_haze:
-            for qual_mask_file in qual_mask_files:
-                mask_qual = gdal.Open(qual_mask_file).ReadAsArray() >= 1
+        # Apply quality masks if needed
+        if apply_mask:
+            if ignore_haze == False:
+                mask_qual = gdal.Open(qual_mask_files[0]).ReadAsArray() == 1
                 null_mask = np.logical_or(null_mask, mask_qual)
+            elif ignore_haze:
+                for qual_mask_file in qual_mask_files:
+                    mask_qual = gdal.Open(qual_mask_file).ReadAsArray() >= 1
+                    null_mask = np.logical_or(null_mask, mask_qual)
 
-
+        # Apply auxiliary masks if needed
         if apply_aux_masks and aux_mask_files:
             for aux_mask_file in aux_mask_files:
                 if os.path.exists(aux_mask_file):
@@ -184,12 +188,12 @@ def main():
         for file in files:
             # Handle both regular spectral images and STM files (case insensitive)
             file_lower = file.lower()
-            if not ('spectral_image' in file_lower or (stm and 'stms.vrt' in file_lower)):
+            if not ('spectral_image' in file_lower or (STM and 'stms.vrt' in file_lower)):
                 continue
 
             # Determine file paths based on STM flag
             # 1. Identify the target suffix based on the STM flag
-            suffix = 'STMS.vrt' if stm else 'SPECTRAL_IMAGE.TIF'
+            suffix = 'STMS.vrt' if STM else 'SPECTRAL_IMAGE.TIF'
             rel_path = os.path.relpath(root, cube_spec)
 
             # 2. Assign paths using the suffix
@@ -220,7 +224,7 @@ def main():
 
             tasks.append((fn_spec_img, fn_mask_noda, qual_mask_files, fn_frac_img,
                           fn_reg_model, class_names, apply_clip, apply_mask,
-                          apply_aux_masks, aux_mask_files, ignore_haze, stm))
+                          apply_aux_masks, aux_mask_files, ignore_haze, STM))
 
     # Parallel processing
     results = []

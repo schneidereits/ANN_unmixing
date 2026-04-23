@@ -173,8 +173,9 @@ FILE_NAME_MODEL = 'nn_model'
 N_WORKERS = math.ceil(os.cpu_count() * 0.5)
 PARALLELISM_THREADS = 1  # threads per process (workers * threads = total cores)
 
-CUBE_SPEC = r"data\demodata_taylorM\img_sub"
-CUBE_SPEC = r"data\data_cube\time_series\X0004_Y0014"
+CUBE_SPEC = r"D:\ANN_unmixing\data\demodata_taylorM\img_sub"
+#CUBE_SPEC = r"data\demodata_taylorM\img_sub_shs"
+#CUBE_SPEC = r"data\data_cube\time_series\X0004_Y0015"
 
 
 REG_MODEL_PATH = os.path.join(MODEL_DIR, 'nn_model.keras')

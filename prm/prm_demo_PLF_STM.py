@@ -150,7 +150,7 @@ MODEL_INPUT_SHAPE = (204,)
 if STM:
     MODEL_INPUT_SHAPE = (len(STM_METRICS) * STM_N_BAND_PER_METRIC,)  
     
-MODEL_DENSE_UNITS = 8
+MODEL_DENSE_UNITS = 256
 MODEL_N_LAYERS = 1
 MODEL_NUM_CLASSES = len(CLASSES)
 
@@ -174,8 +174,8 @@ FILE_NAME_MODEL = 'nn_model'
 # ----------------------
 # 04_predict_parallel (parameters for prediction workflows)
 # ----------------------
-N_WORKERS = math.ceil(os.cpu_count() * 0.1)
-PARALLELISM_THREADS = 4  # threads per process (workers * threads = total cores)
+N_WORKERS = 1
+PARALLELISM_THREADS = math.ceil(os.cpu_count() * 0.8)  # threads per process (workers * threads = total cores)
 
 CUBE_SPEC = r"data\data_cube\STM"
 
@@ -201,10 +201,12 @@ QUAL_SUBMASKS = [
 
 
 # Tiles to process (single authoritative list)
+DATA_CUBE_FORMAT = True
 TILES_TO_PROCESS = ["X0004_Y0014", 
                     "X0004_Y0015",
                     "X0005_Y0014",
                     "X0005_Y0015"]
+TILES_TO_PROCESS = ["X0004_Y0014"]
 
 # ----------------------
 # 05_mosaic_frac

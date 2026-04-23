@@ -31,10 +31,16 @@ spec = importlib.util.spec_from_file_location("prm", prm_file)
 prm = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(prm)
 
-cube_dir = prm.PREDICTIONS_DIR
+PREDICTIONS_DIR = prm.PREDICTIONS_DIR
 products = prm.PRODUCTS
-output_dir = Path(cube_dir) / "qc_plots"
+DATA_CUBE_FORMAT = prm.DATA_CUBE_FORMAT
+STM = prm.STM
+output_dir = Path(PREDICTIONS_DIR) / "stats"
 output_dir.mkdir(parents=True, exist_ok=True)
+
+# Create subdirectory for DC plots
+dc_plots_dir = output_dir / "histograms"
+dc_plots_dir.mkdir(exist_ok=True)
 
 N_WORKERS = 30  # number of threads
 
@@ -83,8 +89,11 @@ def load_and_sum(fn):
 # -------------------------------------------------------
 # SCAN ALL VRT FILES
 # -------------------------------------------------------
-search_path = Path(cube_dir) 
-files = sorted(search_path.rglob("*.vrt"))
+search_path = Path(PREDICTIONS_DIR) 
+if not DATA_CUBE_FORMAT or STM:
+    files = sorted(search_path.rglob("*.tif"))
+else:
+    files = sorted(search_path.rglob("*.vrt"))
 
 all_vals = []
 scene_stats = []
@@ -113,7 +122,7 @@ with ThreadPoolExecutor(max_workers=N_WORKERS) as executor:
         plt.xlabel("Sum of bands")
         plt.ylabel("Frequency")
         plt.tight_layout()
-        plt.savefig(output_dir / f"{Path(fn).stem}_sum_hist.png")
+        plt.savefig(dc_plots_dir / f"{Path(fn).stem}_sum_hist.png")
         plt.close()
 
 # -------------------------------------------------------
@@ -134,13 +143,6 @@ else:
     hist_path = output_dir / "GLOBAL_sum_hist.png"
     plt.savefig(hist_path)
     plt.close()
-
-    # also copy global histogram to parent (cube_dir)
-    parent_dir = Path(cube_dir)
-    try:
-        shutil.copy2(hist_path, parent_dir / hist_path.name)
-    except Exception as e:
-        print(f"[WARNING] could not copy global histogram to parent dir: {e}")
 
     # -------------------------------------------------------
     # SAVE SCENE STATISTICS
@@ -170,12 +172,6 @@ else:
     except Exception as e:
         print(f"[ERROR] saving statistics: {e}")
 
-    # Also copy CSV to parent directory
-    try:
-        shutil.copy2(csv_path, parent_dir / csv_path.name)
-    except Exception as e:
-        print(f"[WARNING] could not copy stats file to parent dir: {e}")
-
     # -------------------------------------------------------
     # PLOT MEAN vs DATE
     # -------------------------------------------------------
@@ -203,15 +199,9 @@ else:
         ts_path = output_dir / 'mean_by_date.png'
         plt.savefig(ts_path)
         plt.close()
-
-        # copy to parent
-        try:
-            shutil.copy2(ts_path, parent_dir / ts_path.name)
-        except Exception as e:
-            print(f"[WARNING] could not copy time-series plot to parent dir: {e}")
     else:
         print("[WARNING] No valid dates extracted; skipping time-series plot.")
 
     print("\nProcessing complete.")
-    print(f"Plots saved to: {output_dir} and {parent_dir}")
-    print(f"Stats saved to: {csv_path} and {parent_dir / csv_path.name}")
+    print(f"Plots saved to: {output_dir}")
+    print(f"Stats saved to: {csv_path}")
