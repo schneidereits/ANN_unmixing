@@ -205,7 +205,7 @@ TILES_TO_PROCESS = ["X0004_Y0014",
 # 05_mosaic_frac
 # ----------------------
 # default product directory and file products
-PRODUCTS = ['VEGCOV_FRAC.TIF']
+PRODUCTS = 'VEGCOV_FRAC.TIF'
 
 
 # End of params-only configuration file

@@ -58,7 +58,7 @@ STM_METRICS = ['p10', 'p25', 'p50', 'p75', 'p90']  # Percentiles/metrics for eac
 STM_N_BAND_PER_METRIC = 204  # Number of unique wavelength bands per metric (204 wavelengths x 5 metrics = 1020 total)
 
 # Input data files 
-SPECTRAL_LIB = r"data\endmembers\Plant_life_forms_STMS.csv"
+SPECTRAL_LIB = r"data\demo_STM\endmembers\Plant_life_forms_STMS.csv"
 
 BAD_WAVELENGTHS_CSV = r"auxiliary\bad_wavelengths.csv"
 if STM:
@@ -151,7 +151,7 @@ if STM:
     MODEL_INPUT_SHAPE = (len(STM_METRICS) * STM_N_BAND_PER_METRIC,)  
     
 MODEL_DENSE_UNITS = 256
-MODEL_N_LAYERS = 1
+MODEL_N_LAYERS = 5
 MODEL_NUM_CLASSES = len(CLASSES)
 
 EPOCHS = 10
@@ -177,7 +177,7 @@ FILE_NAME_MODEL = 'nn_model'
 N_WORKERS = 1
 PARALLELISM_THREADS = math.ceil(os.cpu_count() * 0.8)  # threads per process (workers * threads = total cores)
 
-CUBE_SPEC = r"data\data_cube\STM"
+CUBE_SPEC = r"data\demo_STM\data_cube"
 
 REG_MODEL_PATH = os.path.join(MODEL_DIR, 'nn_model.keras')
 FN_LOG_FILE = os.path.join(PREDICTIONS_DIR, 'processing_log.csv')
@@ -206,13 +206,12 @@ TILES_TO_PROCESS = ["X0004_Y0014",
                     "X0004_Y0015",
                     "X0005_Y0014",
                     "X0005_Y0015"]
-TILES_TO_PROCESS = ["X0004_Y0014"]
 
 # ----------------------
 # 05_mosaic_frac
 # ----------------------
 # default product directory and file products
-PRODUCTS = ['PLF_FRAC.TIF']
+PRODUCTS = "PLF_FRAC.TIF"
 
 
 # End of params-only configuration file

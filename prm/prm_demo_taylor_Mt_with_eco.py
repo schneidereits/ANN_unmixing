@@ -208,7 +208,7 @@ if DATA_CUBE_FORMAT:
 # 05_mosaic_frac
 # ----------------------
 # default product directory and file products
-PRODUCTS = ['VEGCOV_FRAC.TIF']
+PRODUCTS = 'VEGCOV_FRAC.TIF'
 
 
 # End of params-only configuration file

@@ -13,9 +13,9 @@ import importlib.util
 # PRM
 ###############################################################
 PRM_DIR = "prm"
-PRM_MODULE = "prm_demo_taylor_Mt"
-PRM_MODULE = "prm_demo_taylor_Mt_with_eco"
-#PRM_MODULE = "prm_demo_PLF_STM"  
+#PRM_MODULE = "prm_demo_taylor_Mt"
+#PRM_MODULE = "prm_demo_taylor_Mt_with_eco"
+PRM_MODULE = "prm_demo_PLF_STM"  
 #PRM_MODULE = "prm_demo_veg_condition_time_series"
 
 #---------------------------------------------------------------------

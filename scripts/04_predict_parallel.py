@@ -206,10 +206,10 @@ def main():
 
             # 4. Handle fraction and auxiliary files
             if DATA_CUBE_FORMAT:
-                fn_frac_img = os.path.join(PREDICTIONS_DIR, rel_path, file.replace(suffix, 'VEGCOV_FRAC.TIF'))
+                fn_frac_img = os.path.join(PREDICTIONS_DIR, rel_path, file.replace(suffix,PRODUCTS[0]))
             else:
                 # For flat structure, just use the filename without subdirectory
-                base_filename = os.path.basename(file).lower().replace(suffix.lower(), 'VEGCOV_FRAC.TIF')
+                base_filename = os.path.basename(file).lower().replace(suffix.lower(), PRODUCTS[0])
                 fn_frac_img = os.path.join(PREDICTIONS_DIR, base_filename)
                 
                 
