@@ -16,10 +16,9 @@ PRM_DIR = "prm"
 #PRM_MODULE = "prm_demo_taylor_Mt"
 #PRM_MODULE = "prm_demo_taylor_Mt_with_eco"
 PRM_MODULE = "prm_demo_PLF_STM"  
-#PRM_MODULE = "prm_demo_veg_condition_time_series"
+#PRM_MODULE = "prm_demo_data_cube"
 
 #---------------------------------------------------------------------
-
 # Function to load prm module
 # -----------------------------
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
