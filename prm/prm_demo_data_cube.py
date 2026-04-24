@@ -58,7 +58,7 @@ STM_METRICS = ['p10', 'p25', 'p50', 'p75', 'p90']  # Percentiles/metrics for eac
 STM_N_BAND_PER_METRIC = 204  # Number of unique wavelength bands per metric (204 wavelengths x 5 metrics = 1020 total)
 
 # Input data files 
-SPECTRAL_LIB = r"data\endmembers\veg_condition_time_series.csv"
+SPECTRAL_LIB = r"data\demo_data_cube\endmembers\veg_condition_time_series.csv"
 
 BAD_WAVELENGTHS_CSV = r"auxiliary\bad_wavelengths.csv"
 if STM:
@@ -173,7 +173,7 @@ FILE_NAME_MODEL = 'nn_model'
 N_WORKERS = math.ceil(os.cpu_count() * 0.7)
 PARALLELISM_THREADS = 1  # threads per process (workers * threads = total cores)
 
-CUBE_SPEC = r"data\data_cube\time_series"
+CUBE_SPEC = r"data\demo_data_cube\data_cube"
 
 REG_MODEL_PATH = os.path.join(MODEL_DIR, 'nn_model.keras')
 FN_LOG_FILE = os.path.join(PREDICTIONS_DIR, 'processing_log.csv')

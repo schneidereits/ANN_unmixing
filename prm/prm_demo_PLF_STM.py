@@ -58,9 +58,9 @@ STM_METRICS = ['p10', 'p25', 'p50', 'p75', 'p90']  # Percentiles/metrics for eac
 STM_N_BAND_PER_METRIC = 204  # Number of unique wavelength bands per metric (204 wavelengths x 5 metrics = 1020 total)
 
 # Input data files 
-SPECTRAL_LIB = r"data\demo_STM\endmembers\Plant_life_forms_STMS.csv"
+SPECTRAL_LIB = r"D:\ANN_unmixing\data\demo_STM\endmembers\Plant_life_forms_STMS.csv"
 
-BAD_WAVELENGTHS_CSV = r"auxiliary\bad_wavelengths.csv"
+BAD_WAVELENGTHS_CSV = r"D:\ANN_unmixing\auxiliary\bad_wavelengths.csv"
 if STM:
     BAD_WAVELENGTHS_CSV = None
 
@@ -119,7 +119,7 @@ def filter_endmembers(df: pd.DataFrame, BAND_MAP: dict, numeric_cols: list) -> p
 # ----------------------
 # 02_synthmix
 # ----------------------
-CLASSES = ["btr", "ntr", "shr", "her", "nve"]
+CLASSES = ["tre", "shr", "her", "nve"]
 SYNTHMIX_INPUT_FILES = [f"{c}.csv" for c in CLASSES]  
 SYNTHMIX_OUTPUT_SPEC = 'mixed_spectra.npy'
 SYNTHMIX_OUTPUT_FRAC = 'fraction_label.npy'
