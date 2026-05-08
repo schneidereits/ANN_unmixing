@@ -104,7 +104,7 @@ This orchestrates the following phases in sequence:
 Results are saved in `output/<your_project_name>/` with subdirectories for each phase.
 
 ### Step 4: Run Predictions on ENMAP Data
-Once training completes, create a similar parameter file or use an existing one, then:
+Once training completes:
 
 1. **Edit the prediction script** in `99_predict.py`:
 ```python
@@ -135,7 +135,7 @@ A CSV file containing spectral reflectance signatures of known land cover classe
 **Format**:
 - First column: `class` (or custom name via `CLASS_COL` parameter) – Land cover category names
 - Subsequent columns: Numeric wavelengths (e.g., `404`, `409.5`, `415`) representing reflectance at each band
-- Rows: Individual spectral measurements (multiple observations per class are averaged)
+- Rows: Individual spectral measurements 
 
 **Example structure**:
 ```
@@ -152,25 +152,12 @@ Soil,0.065,0.070,0.075,...,0.290
 - Hyperspectral image extraction from reference sites
 - Laboratory reflectance spectroscopy measurements
 
+- Code for resampling to enamp can be found here: (Spectral Resampling)[https://github.com/schneidereits/Spectral_resampling{
+
 **Where to place**: Set the full path in your `prm_*.py` file under `SPECTRAL_LIB`
 
-### 2. ENMAP Data Cubes (Required for Prediction Only)
+### 2. ENMAP Data Cubes (Optional)
 Hyperspectral image data from ENMAP or compatible sensors to unmix.
-
-**Expected format**:
-- Organized in tile subdirectories (e.g., `X0004_Y0014/`) under `prm['DATA_DIR']`
-- Each tile contains GeoTIFF or HDF files with all spectral bands
-- Coordinate reference system and geolocation metadata required
-
-**Folder structure expected**:
-```
-data_cube/
-├── X0004_Y0014/
-│   ├── ENMAP*.tif 
-├── X0004_Y0015/
-├── X0005_Y0014/
-└── X0005_Y0015/
-```
 
 **Set path in**: `prm['DATA_DIR']` parameter
 
