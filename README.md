@@ -104,7 +104,7 @@ This orchestrates the following phases in sequence:
 Results are saved in `output/<your_project_name>/` with subdirectories for each phase.
 
 ### Step 4: Run Predictions on ENMAP Data
-Once training completes, create a similar parameter file or use an existing one, then:
+Once training completes:
 
 1. **Edit the prediction script** in `99_predict.py`:
 ```python
