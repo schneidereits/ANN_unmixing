@@ -69,6 +69,13 @@ IMPORTANT FILTERING PARAMETERS ARE SET IN THE PRM
 ### Parameter Files
 - `prm_*.py`: Configuration files for different workflow variants
 
+Available demo parameter files:
+- **`prm_demo_taylor_Mt.py`**: Demonstrates spectral unmixing of GV (Green Vegetation), NPV (Non-Photosynthetic Vegetation), and SUB (Substrate) on ENMAP scenes using spectral libraries with and without field spectra.
+
+- **`prm_demo_PLF_STM.py`**: Implements plant life form (PLF) mapping using seasonal temporal metric (STM) stacks. Maps five  classes: Needleleaf, Broadleaf, Shrub, Herb, and Non-Vegetation
+
+- **`prm_demo_data_cube.py`**: Demonstrates processing ENMAP data organized in FORCE data cube format.
+
 ## Usage Instructions
 
 ### Step 1: Configure Your Workflow
